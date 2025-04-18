@@ -4,6 +4,7 @@ const client = require('./config/client');
 const registerEvents = require('./events');
 const registerCommands = require('./commands');
 const connectToMongoDB = require('./services/mongo');
+const scheduler = require('./cron/scheduler'); // importe => lance le cron
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);
