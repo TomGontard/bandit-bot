@@ -3,9 +3,13 @@ require('dotenv').config();
 const client = require('./config/client');
 const registerEvents = require('./events');
 const registerCommands = require('./commands');
+const connectToMongoDB = require('./services/mongo');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);
 
 // Connexion du bot
 client.login(process.env.DISCORD_TOKEN);
+
+// Connexion à la base de données MongoDB
+connectToMongoDB();
