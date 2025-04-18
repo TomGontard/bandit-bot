@@ -7,6 +7,7 @@ const connectToMongoDB = require('./services/mongo');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);
+registerCommands(client);
 
 // Connexion du bot
 client.login(process.env.DISCORD_TOKEN);
