@@ -4,7 +4,10 @@ const client = require('./config/client');
 const registerEvents = require('./events');
 const registerCommands = require('./commands');
 const connectToMongoDB = require('./services/mongo');
+registerCommands(client);
 +require('./cron/scheduler');
++require('./cron/twitterRelay');
+
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);
