@@ -20,7 +20,7 @@ cron.schedule(CRON_EXPR, async () => {
     }
 
     const channel = await client.channels.fetch(CHANNEL_ID);
-    const url     = `https://fxtwitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
+    const url     = `https://twitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
 
     // URL entourée de chevrons => pas de preview Discord
     await channel.send({ content: `<${url}>` });
