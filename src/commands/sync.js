@@ -1,10 +1,12 @@
 // src/commands/sync.js
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getWalletByDiscordId } = require('../services/userLinkService');
 const { fetchBalances, aggregate } = require('../services/nftChecker');
 const { saveHolding, syncRoles } = require('../services/holdingService');
 const { partners } = require('../config/collections');
 const checkCooldown = require('../utils/cooldown');
+const { getUserLink } = require('../services/userLinkService');
+const NFTHolding = require('../services/models/NFTHolding');
 
 
 module.exports = {
@@ -46,11 +48,24 @@ module.exports = {
       .map(p => `• **${p.name}** : ${counts[p.address]}`);
 
     const list = lines.length ? lines.join('\n') : '_Aucun NFT détecté_';
+    
+    const userLink = await getUserLink(interaction.user.id);
+    const holding = await NFTHolding.findOne({ discordId: interaction.user.id });
+
+    const numberText = userLink?.registrationNumber
+      ? `\n🔢 Tu es le **#${userLink.registrationNumber}** à avoir lié ton adresse.`
+      : '';
+
+    const whitelistText = holding?.whitelistCount
+      ? `\n🎫 Whitelists reçues : **${holding.whitelistCount}**`
+      : '';
 
     await interaction.editReply(
       `🔍 **Sync terminée**\n` +
       `Genesis : **${genesis}**\nBandit : **${bandit}**\n\n` +
-      `NFT trouvés :\n${list}`
+      `NFT trouvés :\n${list}` +
+      `${numberText}${whitelistText}`
     );
+
   },
 };

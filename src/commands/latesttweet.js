@@ -1,5 +1,5 @@
 // src/commands/latesttweet.js
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { fetchLatestPost }     = require('../services/twitter');
 const checkCooldown           = require('../utils/cooldown');
 
@@ -8,8 +8,9 @@ const WINDOW_15_MIN = 15 * 60 * 1000;   // 15 minutes
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('latesttweet')
-    .setDescription('Affiche le dernier tweet original (hors réponses) du compte'),
-
+    .setDescription('Affiche le dernier tweet original (hors réponses) du compte')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // seul admin peut l’utiliser
+  
   async execute(interaction) {
     // Cool‑down utilisateur (15 min)
     const rest = checkCooldown(interaction.user.id, 'latesttweet', WINDOW_15_MIN);
@@ -27,7 +28,7 @@ module.exports = {
       if (!tweet) {
         return interaction.editReply('Aucun tweet trouvé.');
       }
-      const url = `https://fxtwitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
+      const url = `https://twitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
       await interaction.editReply(url);
     } catch (e) {
         const isRateLimit = e.message === 'RATE_LIMIT' || e.response?.status === 429;
