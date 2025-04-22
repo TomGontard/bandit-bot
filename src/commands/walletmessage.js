@@ -4,25 +4,25 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Embed
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('walletmessage')
-    .setDescription("Envoie le message d'onboarding wallet")
+    .setDescription("Send the wallet onboarding message")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // admin only
 
   async execute(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0x8B00FF)
-      .setTitle("🔐 Rejoins le gang des Bandits")
+      .setTitle("🔐 Join the Bandit Gang")
       .setDescription(`
-Pour accéder aux rôles secrets, tu dois **lier ton wallet Monad** à ton compte Discord.
+To access secret roles and unlock hidden perks, you need to **link your Monad wallet** to your Discord account.
 
-🪙 **/savewallet** → associe ton adresse EVM  
-👁️ **/checkwallet** → vérifie ton lien actuel  
-🎭 **/sync** → synchronise tes rôles avec tes NFTs
+🪙 **/savewallet** → link your EVM address  
+👁️ **/checkwallet** → verify your linked address  
+🎭 **/sync** → sync your roles based on your NFT holdings
 
-⚠️ Seuls les membres liés peuvent prétendre aux récompenses et events.
+⚠️ Only linked members are eligible for rewards, airdrops, and exclusive events.
 
-Bienvenue dans la rue, rookie.
+Welcome to the streets, rookie.
       `)
-      .setFooter({ text: 'BanditBot • Monad powered', iconURL: interaction.client.user.displayAvatarURL() });
+      .setFooter({ text: 'BanditBot • Powered by Monad', iconURL: interaction.client.user.displayAvatarURL() });
 
     const row = new ActionRowBuilder()
       .addComponents(

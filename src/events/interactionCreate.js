@@ -3,18 +3,18 @@ module.exports = {
   name: 'interactionCreate',
   execute: async (interaction, client) => {
 
-    // ✅ Gère les boutons cliquables (customId)
+    // ✅ Handles clickable buttons (customId)
     if (interaction.isButton()) {
       const command = interaction.customId;
 
-      // Réponse simple qui invite à taper la commande slash
+      // Simple response prompting the user to use the slash command
       return await interaction.reply({
-        content: `🧠 Tape simplement \`/${command}\` dans ce salon pour commencer.`,
+        content: `🧠 Just type \`/${command}\` in this channel to get started.`,
         ephemeral: true,
       });
     }
 
-    // ✅ Gère les slash commands classiques
+    // ✅ Handles regular slash commands
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands?.get(interaction.commandName);
@@ -25,9 +25,9 @@ module.exports = {
     } catch (error) {
       console.error(error);
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: '❌ Erreur interne.', ephemeral: true });
+        await interaction.followUp({ content: '❌ Internal error.', ephemeral: true });
       } else {
-        await interaction.reply({ content: '❌ Erreur interne.', ephemeral: true });
+        await interaction.reply({ content: '❌ Internal error.', ephemeral: true });
       }
     }
   },

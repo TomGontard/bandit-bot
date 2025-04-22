@@ -4,38 +4,38 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription("Affiche la liste des commandes disponibles"),
+    .setDescription("Display the list of available commands"),
 
   async execute(interaction) {
     const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
-    let helpText = `📘 **Commandes disponibles**\n\n`;
+    let helpText = `📘 **Available Commands**\n\n`;
 
-    // 🟢 Commandes publiques
-    helpText += `### 👥 Pour tous les utilisateurs :\n`;
+    // 🟢 Public commands
+    helpText += `### 👥 For all users:\n`;
     helpText += `
-- \`/savewallet <adresse>\`  
- 🔗 Lie ton compte Discord à ton wallet Monad.
+- \`/savewallet <address>\`  
+ 🔗 Link your Discord account to your Monad wallet.
 
 - \`/checkwallet\`  
- 👁️ Affiche l’adresse EVM actuellement liée à ton compte.
+ 👁️ Show the currently linked EVM address.
 
 - \`/sync\`  
- 🔍 Vérifie la possession de NFTs (Genesis, Bandit, partenaires), met à jour les rôles Discord, et enregistre tes stats en base.
+ 🔍 Check your NFT holdings (Genesis, Bandit, partners), update your Discord roles, and save your stats.
 `;
 
-    // 🔐 Commandes admin uniquement
+    // 🔐 Admin-only commands
     if (isAdmin) {
-      helpText += `\n### 🛠️ Commandes réservées aux administrateurs :\n`;
+      helpText += `\n### 🛠️ Admin-only commands:\n`;
       helpText += `
 - \`/latesttweet\`  
- 📡 Relaye manuellement le dernier tweet du compte officiel dans le channel.
+ 📡 Manually relay the latest tweet from the official account into the channel.
 
 - \`/whitelist <discord_id>\`  
- 🎫 Ajoute une entrée whitelist à un utilisateur Discord (stockée dans la base de données).
+ 🎫 Add a whitelist entry to a Discord user (stored in the database).
 
-- \`/check <@utilisateur>\`  
- 🧾 Affiche toutes les infos Web3 d’un membre (wallet, NFTs, nombre de whitelists, rang d’enregistrement).
+- \`/check <@user>\`  
+ 🧾 Display all Web3 data for a member (wallet, NFTs, whitelist count, registration order).
 `;
     }
 

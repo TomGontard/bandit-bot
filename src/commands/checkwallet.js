@@ -5,7 +5,7 @@ const { getWalletByDiscordId } = require('../services/userLinkService');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('checkwallet')
-    .setDescription("Affiche l'adresse EVM liée à ton compte Discord (éphemeral)"),
+    .setDescription("Display the EVM address linked to your Discord account (ephemeral)"),
 
   async execute(interaction) {
     const discordId = interaction.user.id;
@@ -13,13 +13,13 @@ module.exports = {
 
     if (!wallet) {
       return interaction.reply({
-        content: "❌ Tu n'as encore lié **aucune** adresse EVM à ton compte.",
+        content: "❌ You haven't linked **any** EVM address to your account yet.",
         ephemeral: true,
       });
     }
 
     return interaction.reply({
-      content: `✅ Ton adresse liée est :\n\`${wallet}\``,
+      content: `✅ Your linked address is:\n\`${wallet}\``,
       ephemeral: true,
     });
   },

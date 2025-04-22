@@ -7,13 +7,13 @@ const { partners } = require('../config/collections');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('check')
-    .setDescription('Inspecte les infos Web3 d’un utilisateur')
+    .setDescription('Inspect the Web3 info of a specific user')
     .addUserOption(opt =>
       opt.setName('utilisateur')
-        .setDescription('L’utilisateur à inspecter')
+        .setDescription('The user to inspect')
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // seul admin peut l’utiliser
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // admin only
 
   async execute(interaction) {
     const member = interaction.options.getUser('utilisateur');
@@ -24,12 +24,12 @@ module.exports = {
 
     if (!userLink || !holding) {
       return interaction.reply({
-        content: `❌ Aucune donnée trouvée pour <@${discordId}>.`,
+        content: `❌ No data found for <@${discordId}>.`,
         ephemeral: true,
       });
     }
 
-    // construire réponse
+    // Build the response
     const wallet = userLink.wallet;
     const registrationNumber = userLink.registrationNumber;
     const genesis = holding.genesis || 0;
@@ -38,23 +38,23 @@ module.exports = {
 
     const lines = partners
       .filter(p => holding.counts.get(p.address) > 0)
-      .map(p => `• **${p.name}** : ${holding.counts.get(p.address)}`);
+      .map(p => `• **${p.name}**: ${holding.counts.get(p.address)}`);
 
-    const list = lines.length ? lines.join('\n') : '_Aucun NFT détenu_';
+    const list = lines.length ? lines.join('\n') : '_No NFTs held_';
 
     await interaction.reply({
       ephemeral: true,
       content:
-`👤 **Infos de <@${discordId}>**
+`👤 **Details for <@${discordId}>**
 
-🧾 Wallet : \`${wallet}\`
-🔢 Inscrit en position : #${registrationNumber}
-🎫 Whitelists reçues : **${whitelist}**
+🧾 Wallet: \`${wallet}\`
+🔢 Registered as user #${registrationNumber}
+🎫 Whitelists received: **${whitelist}**
 
-🎟️ Genesis : **${genesis}**
-🤠 Bandit : **${bandit}**
+🎟️ Genesis: **${genesis}**
+🤠 Bandit: **${bandit}**
 
-🧩 Détail des collections :
+🧩 NFT collections breakdown:
 ${list}
 `
     });

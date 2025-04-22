@@ -4,13 +4,13 @@ const NFTHolding = require('../services/models/NFTHolding');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('whitelist')
-    .setDescription("Attribue une whitelist à un utilisateur")
+    .setDescription("Assign a whitelist entry to a user")
     .addStringOption(opt =>
       opt.setName('discordid')
-        .setDescription('ID du membre à whitelister')
+        .setDescription('ID of the member to whitelist')
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // seul admin peut l’utiliser
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // only admins can use this
 
   async execute(interaction) {
     const discordId = interaction.options.getString('discordid');
@@ -18,7 +18,7 @@ module.exports = {
     const holding = await NFTHolding.findOne({ discordId });
     if (!holding) {
       return interaction.reply({
-        content: `❌ Aucun enregistrement trouvé pour l'utilisateur <@${discordId}>.`,
+        content: `❌ No record found for user <@${discordId}>.`,
         ephemeral: true
       });
     }
@@ -27,7 +27,7 @@ module.exports = {
     await holding.save();
 
     return interaction.reply({
-      content: `✅ L'utilisateur <@${discordId}> possède maintenant **${holding.whitelistCount} whitelist(s)**.`,
+      content: `✅ User <@${discordId}> now has **${holding.whitelistCount} whitelist(s)**.`,
       ephemeral: true
     });
   },
