@@ -1,4 +1,3 @@
-// src/commands/savewallet.js
 const { SlashCommandBuilder } = require('discord.js');
 const { isAddress } = require('ethers');
 const { createOrUpdateUserLink, isWalletLinked } = require('../services/userLinkService');
@@ -6,7 +5,7 @@ const { createOrUpdateUserLink, isWalletLinked } = require('../services/userLink
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('savewallet')
-    .setDescription("Associe ton wallet à ton compte Discord (test)")
+    .setDescription("Associe ton wallet à ton compte Discord")
     .addStringOption(option =>
       option.setName('address')
         .setDescription('Ton adresse EVM (Monad)')
@@ -26,7 +25,11 @@ module.exports = {
       return interaction.reply({ content: "❌ Cette adresse est déjà liée à un autre compte.", ephemeral: true });
     }
 
-    await createOrUpdateUserLink(discordId, wallet);
-    await interaction.reply({ content: `✅ Ton wallet ${wallet} a bien été lié à ton compte.`, ephemeral: true });
+    const user = await createOrUpdateUserLink(discordId, wallet);
+
+    await interaction.reply({
+      content: `✅ Ton wallet ${wallet} a bien été lié à ton compte.\nTu es le **#${user.number}** utilisateur à avoir lié son adresse.`,
+      ephemeral: true
+    });
   },
 };
