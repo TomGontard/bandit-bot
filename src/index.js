@@ -7,6 +7,7 @@ const connectToMongoDB = require('./services/mongo');
 registerCommands(client);
 +require('./cron/scheduler');
 +require('./cron/twitterRelay');
++require('./cron/rotatePublication');
 
 
 // Chargement des events (ready, interaction, etc.)
