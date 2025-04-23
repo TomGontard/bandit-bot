@@ -1,6 +1,8 @@
 // src/events/ready.js
 const { getWalletByDiscordId } = require('../services/userLinkService');
 
+let cachedInvites = new Map();
+
 module.exports = {
   name: 'ready',
   once: true,
@@ -15,4 +17,7 @@ execute: async (client) => {
   // Test : remplace par ton ID Discord
   const wallet = await getWalletByDiscordId('cubionix');
   console.log('Wallet associé :', wallet || 'Aucun');
+  const guild = await client.guilds.fetch(process.env.GUILD_ID);
+  cachedInvites = await guild.invites.fetch();
+  client.cachedInvites = cachedInvites;
 }
