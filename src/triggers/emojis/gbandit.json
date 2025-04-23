@@ -1,0 +1,5 @@
+{
+  "trigger": "gbandit",
+  "ignoreAdmins": false,
+  "emojis": ["COOL", "LOL", "GRINNING"]
+}
