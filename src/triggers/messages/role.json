@@ -1,7 +1,7 @@
 {
   "trigger": "role",
-  "ignoreAdmins": true,
-  "cooldownSeconds": 180,
+  "ignoreAdmins": false,
+  "cooldownSeconds": 0,
   "embed": {
     "title": "📛 Wanna climb the Bandit ranks?",
     "color": 16749079,

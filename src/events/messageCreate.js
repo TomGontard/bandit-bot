@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { PermissionsBitField } = require('discord.js');
+const { createEmbed } = require('../utils/createEmbed');
 const cooldownMap = new Map(); // key = trigger:channelId, value = timestamp
 
 const loadJsons = (dirPath) =>
@@ -32,11 +33,11 @@ module.exports = {
       if (lastUsed && now - lastUsed < cooldownMs) continue;
       cooldownMap.set(cooldownKey, now);
 
-      const embed = new EmbedBuilder()
-        .setColor(trigger.embed.color || 0x8B00FF)
-        .setTitle(trigger.embed.title)
-        .setDescription(trigger.embed.description)
-        .setFooter({ text: 'BanditBot • Monad powered' });
+      const embed = createEmbed({
+        title: trigger.embed.title,
+        description: trigger.embed.description,
+        color: trigger.embed.color
+      });
 
       return await message.channel.send({ embeds: [embed] });
     }

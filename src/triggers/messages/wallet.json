@@ -1,6 +1,6 @@
 {
   "trigger": "wallet",
-  "ignoreAdmins": true,
+  "ignoreAdmins": false,
   "cooldownSeconds": 180,
   "embed": {
     "title": "📛 How to link your wallet like a real Bandit?",
