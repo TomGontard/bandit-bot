@@ -3,30 +3,28 @@ const cron = require('node-cron');
 const client = require('../config/client');
 const InviteTrack = require('../services/models/InviteTrack');
 
-cron.schedule('*/15 * * * *', async () => {
+cron.schedule('*/1 * * * *', async () => {
   const guild = await client.guilds.fetch(process.env.GUILD_ID);
-  const members = await guild.members.fetch();
-  const errandRoleId = process.env.ROLE_ERRAND_ID;
-  const muleRoleId = process.env.ROLE_MULE_ID;
+  const errandId = process.env.ROLE_ERRAND_ID;
+  const muleId = process.env.ROLE_MULE_ID;
 
-  const allTracks = await InviteTrack.find({});
+  const tracks = await InviteTrack.find({});
+  const map = new Map();
 
-  const inviterMap = new Map();
-
-  for (const track of allTracks) {
+  for (const track of tracks) {
     const invited = await guild.members.fetch(track.invitedId).catch(() => null);
-    if (invited?.roles.cache.has(errandRoleId)) {
-      const current = inviterMap.get(track.inviterId) || 0;
-      inviterMap.set(track.inviterId, current + 1);
+    if (invited?.roles.cache.has(errandId)) {
+      const count = map.get(track.inviterId) || 0;
+      map.set(track.inviterId, count + 1);
     }
   }
 
-  for (const [inviterId, count] of inviterMap.entries()) {
+  for (const [inviterId, count] of map.entries()) {
     if (count >= 3) {
       const inviter = await guild.members.fetch(inviterId).catch(() => null);
-      if (inviter && !inviter.roles.cache.has(muleRoleId)) {
-        await inviter.roles.add(muleRoleId, 'Invited 3 Errand members');
-        console.log(`✅ ${inviter.user.tag} received the Mule role`);
+      if (inviter && !inviter.roles.cache.has(muleId)) {
+        await inviter.roles.add(muleId, 'Invited 3 Errand members');
+        console.log(`✅ ${inviter.user.tag} has earned the Mule role`);
       }
     }
   }
