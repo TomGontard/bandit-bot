@@ -1,79 +1,61 @@
 // src/services/twitter.js
-const axios        = require('axios');
+const { TwitterApi } = require('twitter-api-v2');
 const TwitterState = require('./models/TwitterState');
 
-const BEARER = process.env.TWITTER_BEARER_TOKEN;
-const HANDLE = process.env.TWITTER_HANDLE;
+const WINDOW_15_MIN = 15 * 60 * 1_000;
+const twitter = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
 
-const api = axios.create({
-  baseURL: 'https://api.twitter.com/2',
-  headers: { Authorization: `Bearer ${BEARER}` },
-});
+let cachedUserId = null;
 
-/* ------------------------------------------------------------------ */
-/*  Gestion interne du rate‑limit (free tier = 1 req / 15 min)        */
-/* ------------------------------------------------------------------ */
-let nextAllowed = 0;      // timestamp (ms) avant lequel on doit s'abstenir
-async function safeGet(url) {
-  const now = Date.now();
-  if (now < nextAllowed) {
-    const err = new Error('RATE_LIMIT');
-    err.rateReset = nextAllowed;
-    throw err;
+async function getUserId() {
+  if (cachedUserId) return cachedUserId;
+  const { data } = await twitter.v2.userByUsername(process.env.TWITTER_HANDLE);
+  cachedUserId = data.id;
+  return data.id;
+}
+
+async function fetchLatestPost() {
+  const existing = await TwitterState.findOne({});
+  if (existing && Date.now() < existing.nextAllowed) {
+    return { tweet: { id: existing.lastTweetId }, isNew: false };
   }
 
   try {
-    return await api.get(url);
-  } catch (e) {
-    if (e.response?.status === 429) {
-      const reset = Number(e.response.headers['x-rate-limit-reset']) || 0; // secondes UNIX
-      nextAllowed = reset * 1000;
+    const uid = await getUserId();
+    const { data, rateLimit } = await twitter.v2.userTimeline(uid, {
+      exclude: 'replies',
+      max_results: 5,
+      'tweet.fields': 'id,created_at',
+    });
+
+    if (!data?.length) return { tweet: null };
+
+    const tweet = data[0];
+    const reset = rateLimit?.reset ? rateLimit.reset * 1000 : Date.now() + WINDOW_15_MIN;
+
+    await TwitterState.findOneAndUpdate(
+      {},
+      {
+        lastTweetId: tweet.id,
+        lastTweetTime: new Date(),
+        nextAllowed: reset,
+      },
+      { upsert: true, new: true }
+    );
+
+    return { tweet: { id: tweet.id }, isNew: true };
+
+  } catch (err) {
+    if (err.code === 429) {
+      console.warn('⚠️ Twitter 429. Using cached tweet.');
+      if (existing) {
+        return { tweet: { id: existing.lastTweetId }, isNew: false };
+      }
     }
-    throw e;
+    throw err;
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Utils                                                             */
-/* ------------------------------------------------------------------ */
-let cachedUserId;
-async function getUserId() {
-  if (cachedUserId) return cachedUserId;
-  const { data } = await safeGet(`/users/by/username/${HANDLE}`);
-  cachedUserId   = data.data.id;
-  return cachedUserId;
-}
-
-/**
- * Récupère le dernier tweet ORIGINAL (pas reply / retweet)
- * @returns { tweet, isNew }
- */
-async function fetchLatestPost() {
-  const userId = await getUserId();
-
-  const params = new URLSearchParams({
-    exclude:        'replies',
-    max_results:    5,
-    'tweet.fields': 'created_at',
-  });
-
-  const { data } = await safeGet(`/users/${userId}/tweets?${params}`);
-  const tweets   = Array.isArray(data.data) ? data.data : [];
-  if (!tweets.length) return { tweet: null, isNew: false };
-
-  const latest   = tweets[0];
-  const stateDoc = await TwitterState.findById('state');
-  const lastId   = stateDoc?.lastTweetId || null;
-
-  return { tweet: latest, isNew: latest.id !== lastId };
-}
-
-async function updateLastTweetId(id) {
-  await TwitterState.findByIdAndUpdate(
-    'state',
-    { lastTweetId: id },
-    { upsert: true },
-  );
-}
-
-module.exports = { fetchLatestPost, updateLastTweetId };
+module.exports = {
+  fetchLatestPost,
+};
