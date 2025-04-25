@@ -3,8 +3,8 @@
   "ignoreAdmins": false,
   "cooldownSeconds": 180,
   "embed": {
-    "title": "📛 How to link your wallet like a real Bandit?",
+    "title": "🔐 Link your wallet. Claim your identity.",
     "color": 16749079,
-    "description": "🔐 **Your wallet is your ID card in the streets of Monad.** Without it, you ain't nothing but a tourist.\n\nHere's how you get yourself registered: <#1364371354295599164> \n\n**🪙 /savewallet** → Link your Monad wallet \n**👁 /checkwallet** → See if it's already linked\n**🎭 /sync** → Sync your wallet to check if you own partner NFT collections\n\n---\n\n🧩 **Why should you care?**\n\n• 🎁 No wallet = no access to whitelists, giveaways, events or Discord rewards\n• 🤝 We check wallets to confirm you're part of the crew\n\n---\n\n**Troubles?** Ask in <#1360638604107317452> or open a <#1360642364972208428>.\n\n> _“In Bandit territory, your wallet speaks louder than words.”_ – A seasoned Mule"
+    "description": "Your wallet is your Bandit ID.\nUse `/savewallet` to link it.\n\nCheck the full guide in <#1364371354295599164>\n\n> _“No wallet, no street cred.”_"
   }
 }
