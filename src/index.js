@@ -9,7 +9,7 @@ registerCommands(client);
 +require('./cron/twitterRelay');
 +require('./cron/updateStatsChannels');
 +require('./cron/rotatePublication');
-
++require('./cron/checkMuleEligibility');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);

@@ -3,7 +3,7 @@
   "channelId": "env:CHANNEL_GENERAL_ID",
   "embed": {
     "title": "<:MULE:1364560650487074858> Want the **Mule** role?",
-    "description": "Invite **3 people** who reach the **Errand** rank and you'll earn the **Mule** role automatically!\n\nUse `/mule` to track your progress 📨",
+    "description": "Invite **3 people** who reach the **Errand** rank and link their wallet\n To earn the **Mule** role automatically!\n\nUse `/mule` to track your progress 📨",
     "color": 16750915
   }
 }

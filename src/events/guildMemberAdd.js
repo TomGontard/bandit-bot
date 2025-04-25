@@ -1,39 +1,34 @@
 // src/events/guildMemberAdd.js
-const InviteTrack = require('../services/models/InviteTrack');
+const Invite = require('../services/models/Invite');
 
 module.exports = {
-  name: 'guildMemberAdd',
+  name : 'guildMemberAdd',
   async execute(member) {
-    const newInvites = await member.guild.invites.fetch();
-    const cachedInvites = member.client.cachedInvites || new Map();
+    // 1️⃣  Detect which invite link was used
+    const latestInvites = await member.guild.invites.fetch();
+    const cache         = member.client.cachedInvites || new Map();
 
-    let usedInvite = null;
-
-    for (const invite of newInvites.values()) {
-      const prev = cachedInvites.get(invite.code) || 0;
-      if (invite.uses > prev) {
-        usedInvite = invite;
+    let used = null;
+    for (const inv of latestInvites.values()) {
+      const prevUses = cache.get(inv.code) || 0;
+      if (inv.uses > prevUses) {
+        used = inv;
         break;
       }
     }
 
-    member.client.cachedInvites = newInvites.reduce((acc, invite) => {
-      acc.set(invite.code, invite.uses);
-      return acc;
-    }, new Map());
+    // Refresh cache
+    member.client.cachedInvites = latestInvites.reduce((m, i) => m.set(i.code, i.uses), new Map());
 
-    const inviter = usedInvite?.inviter;
+    // 2️⃣  Persist in DB (avoids duplicates thanks to $addToSet)
+    const inviter = used?.inviter;
     if (inviter) {
-      const alreadyTracked = await InviteTrack.findOne({ invitedId: member.user.id });
-      if (!alreadyTracked) {
-        await InviteTrack.create({
-          invitedId: member.user.id,
-          inviterId: inviter.id,
-        });
-        console.log(`📥 ${inviter.tag} invited ${member.user.tag}`);
-      } else {
-        console.log(`⚠️ ${member.user.tag} was already tracked.`);
-      }
+      await Invite.findOneAndUpdate(
+        { inviterId: inviter.id },
+        { $addToSet: { invitedIds: member.user.id } },
+        { upsert: true, new: true },
+      );
+      console.log(`📥 ${inviter.tag} invited ${member.user.tag}`);
     }
   },
 };
