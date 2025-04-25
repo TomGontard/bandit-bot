@@ -1,6 +1,7 @@
 // src/commands/invited.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const InviteTrack = require('../services/models/InviteTrack');
+const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,14 +12,13 @@ module.exports = {
         .setDescription('The user to inspect')
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // admin only
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
     const user = interaction.options.getUser('user');
     const guild = interaction.guild;
     const errandRoleId = process.env.ROLE_ERRAND_ID;
 
-    // 🧩 Step 1: Get custom-tracked invites (MongoDB)
     const dbInvites = await InviteTrack.find({ inviterId: user.id });
     const total = dbInvites.length;
 
@@ -28,7 +28,6 @@ module.exports = {
       if (member?.roles.cache.has(errandRoleId)) confirmed++;
     }
 
-    // 📥 Step 2: Get official Discord invites created by this user
     const allInvites = await guild.invites.fetch();
     const userInvites = allInvites.filter(inv => inv.inviter?.id === user.id);
 
@@ -39,20 +38,27 @@ module.exports = {
       return `• \`${code}\` — **${uses}** use(s) (created: ${created})`;
     });
 
-    const summary =
+    const description =
       `📨 <@${user.id}> has invited **${total}** member(s)\n` +
       `✅ Among them, **${confirmed}** reached the **Errand** role\n` +
       (confirmed >= 3
-        ? `🐴 Eligible for the **Mule** role\n`
-        : `🏃 Needs **${3 - confirmed}** more to reach Mule eligibility\n`);
+        ? `🐴 Eligible for the **Mule** role`
+        : `🏃 Needs **${3 - confirmed}** more to reach Mule eligibility`) +
+      (inviteLines.length
+        ? `\n\n📬 **Invite links created by <@${user.id}>**:\n${inviteLines.join('\n')}`
+        : `\n\n📬 <@${user.id}> has not created any invite links.`);
 
-    const invitesText = inviteLines.length
-      ? `📬 **Invite links created by <@${user.id}>**:\n${inviteLines.join('\n')}`
-      : `📬 <@${user.id}> has not created any invite links.`
+    const embed = createEmbed({
+      title: '📨 Invite Tracker',
+      description,
+      interaction,
+    });
 
     await interaction.reply({
-      ephemeral: true,
-      content: `${summary}\n${invitesText}`
+      embeds: [embed],
+      flags: 64,
     });
-  }
+  },
 };
+
+

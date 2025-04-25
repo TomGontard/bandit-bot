@@ -36,12 +36,12 @@ module.exports = {
       const embed = createEmbed({
         title: trigger.embed.title,
         description: trigger.embed.description,
-        color: trigger.embed.color
+        color: trigger.embed.color,
+        interaction: { client: message.client, guild: message.guild } // simulate for footer
       });
 
       return await message.channel.send({ embeds: [embed] });
     }
-
 
     // 🔹 Emoji triggers
     for (const trigger of emojiTriggers) {

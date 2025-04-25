@@ -1,6 +1,7 @@
 // src/commands/checkwallet.js
 const { SlashCommandBuilder } = require('discord.js');
 const { getWalletByDiscordId } = require('../services/userLinkService');
+const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,14 +14,22 @@ module.exports = {
 
     if (!wallet) {
       return interaction.reply({
-        content: "❌ You haven't linked **any** EVM address to your account yet.",
-        ephemeral: true,
+        embeds: [createEmbed({
+          title: '❌ No Wallet Linked',
+          description: "You haven't linked **any** EVM address to your account yet.",
+          interaction,
+        })],
+        flags: 64,
       });
     }
 
     return interaction.reply({
-      content: `✅ Your linked address is:\n\`${wallet}\``,
-      ephemeral: true,
+      embeds: [createEmbed({
+        title: '✅ Linked Wallet',
+        description: `Your linked address is:\n\`${wallet}\``,
+        interaction,
+      })],
+      flags: 64,
     });
   },
 };
