@@ -1,0 +1,8 @@
+{
+  "type": "embed",
+  "channelId": "env:CHANNEL_GENERAL_ID",
+  "embed": {
+    "title": "❓ Need help navigating the server?",
+    "description": "Type `/help` to see all available commands!\n\nStill lost? Open a ticket in <#{{CHANNEL_TICKETS_ID}}>."
+  }
+}
