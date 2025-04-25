@@ -5,18 +5,30 @@ module.exports = {
   name: 'guildMemberAdd',
   async execute(member) {
     const newInvites = await member.guild.invites.fetch();
-    const oldInvites = member.client.cachedInvites;
-    member.client.cachedInvites = newInvites;
+    const cachedInvites = member.client.cachedInvites || new Map();
 
-    const used = newInvites.find(inv => oldInvites.get(inv.code)?.uses < inv.uses);
-    const inviter = used?.inviter;
+    let usedInvite = null;
 
+    for (const invite of newInvites.values()) {
+      const prev = cachedInvites.get(invite.code) || 0;
+      if (invite.uses > prev) {
+        usedInvite = invite;
+        break;
+      }
+    }
+
+    member.client.cachedInvites = newInvites.reduce((acc, invite) => {
+      acc.set(invite.code, invite.uses);
+      return acc;
+    }, new Map());
+
+    const inviter = usedInvite?.inviter;
     if (inviter) {
       await InviteTrack.create({
         invitedId: member.user.id,
-        inviterId: inviter.id
+        inviterId: inviter.id,
       });
       console.log(`📥 ${inviter.tag} invited ${member.user.tag}`);
     }
-  }
+  },
 };
