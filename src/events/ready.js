@@ -1,18 +1,16 @@
 // src/events/ready.js
-const { getWalletByDiscordId } = require('../services/userLinkService');
-
 module.exports = {
   name: 'ready',
   once: true,
-  execute(client) {
-    console.log(`✅ Bot connecté en tant que ${client.user.tag}`);
-  },
-};
+  async execute(client) {
+    for (const guild of client.guilds.cache.values()) {
+      const invites = await guild.invites.fetch();
+      client.cachedInvites = invites.reduce((acc, invite) => {
+        acc.set(invite.code, invite.uses);
+        return acc;
+      }, new Map());
+    }
 
-execute: async (client) => {
-  console.log(`✅ Connecté en tant que ${client.user.tag}`);
-  
-  // Test : remplace par ton ID Discord
-  const wallet = await getWalletByDiscordId('cubionix');
-  console.log('Wallet associé :', wallet || 'Aucun');
-}
+    console.log(`✅ Logged in as ${client.user.tag}`);
+  }
+};

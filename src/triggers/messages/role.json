@@ -1,0 +1,10 @@
+{
+  "trigger": "role",
+  "ignoreAdmins": false,
+  "cooldownSeconds": 180,
+  "embed": {
+    "title": "🧠 Want a role? Earn it like a Bandit.",
+    "color": 16749079,
+    "description": "Only verified Bandits earn ranks on Monad.\n\nCheck the full guide in <#1360641177149247635>\n\n> _“Roles ain't given… they're **earned**.”_"
+  }
+}

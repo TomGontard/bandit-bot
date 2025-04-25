@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getUserLink } = require('../services/userLinkService');
 const NFTHolding = require('../services/models/NFTHolding');
 const { partners } = require('../config/collections');
+const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -24,12 +25,15 @@ module.exports = {
 
     if (!userLink || !holding) {
       return interaction.reply({
-        content: `❌ No data found for <@${discordId}>.`,
-        ephemeral: true,
+        embeds: [createEmbed({
+          title: '❌ User Not Found',
+          description: `No Web3 data found for <@${discordId}>.`,
+          interaction
+        })],
+        flags: 64,
       });
     }
 
-    // Build the response
     const wallet = userLink.wallet;
     const registrationNumber = userLink.registrationNumber;
     const genesis = holding.genesis || 0;
@@ -42,21 +46,26 @@ module.exports = {
 
     const list = lines.length ? lines.join('\n') : '_No NFTs held_';
 
+    const embed = createEmbed({
+      title: `👤 Details for ${member.tag}`,
+      description:
+        ` 👤 **Details for <@${discordId}>**
+          🧾 Wallet: \`${wallet}\`
+          🔢 Registered as user #${registrationNumber}
+          🎫 Whitelists received: **${whitelist}**
+
+          🎟️ Genesis: **${genesis}**
+          🤠 Bandit: **${bandit}**
+
+          🧩 NFT collections breakdown:
+          ${list}
+          `,
+      interaction
+    });
+
     await interaction.reply({
-      ephemeral: true,
-      content:
-`👤 **Details for <@${discordId}>**
-
-🧾 Wallet: \`${wallet}\`
-🔢 Registered as user #${registrationNumber}
-🎫 Whitelists received: **${whitelist}**
-
-🎟️ Genesis: **${genesis}**
-🤠 Bandit: **${bandit}**
-
-🧩 NFT collections breakdown:
-${list}
-`
+      embeds: [embed],
+      flags: 64,
     });
   },
 };

@@ -1,6 +1,8 @@
+// src/commands/savewallet.js
 const { SlashCommandBuilder } = require('discord.js');
 const { isAddress } = require('ethers');
 const { createOrUpdateUserLink, isWalletLinked } = require('../services/userLinkService');
+const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,20 +18,43 @@ module.exports = {
     const discordId = interaction.user.id;
     const wallet = interaction.options.getString('address');
 
+    // ❌ Invalid address
     if (!isAddress(wallet)) {
-      return interaction.reply({ content: "❌ Invalid address.", ephemeral: true });
+      return interaction.reply({
+        embeds: [createEmbed({
+          title: '❌ Invalid Address',
+          description: 'The address you provided is not a valid EVM address.',
+          color: 0xFF0000,
+          interaction,
+        })],
+        flags: 64
+      });
     }
 
+    // 🔐 Already linked
     const alreadyLinked = await isWalletLinked(wallet);
     if (alreadyLinked) {
-      return interaction.reply({ content: "❌ This address is already linked to another account.", ephemeral: true });
+      return interaction.reply({
+        embeds: [createEmbed({
+          title: '❌ Wallet Already Linked',
+          description: 'This wallet is already associated with another Discord account.',
+          interaction,
+        })],
+        flags: 64
+      });
     }
 
+    // ✅ Link wallet
     const user = await createOrUpdateUserLink(discordId, wallet);
 
-    await interaction.reply({
-      content: `✅ Your wallet ${wallet} has been successfully linked.\nYou are user **#${user.number}** to link an address.`,
-      ephemeral: true
+    return interaction.reply({
+      embeds: [createEmbed({
+        title: '✅ Wallet Linked',
+        description: `Your wallet \`${wallet}\` has been successfully linked.\nYou are user **#${user.registrationNumber}** to link a wallet.`,
+        color: 0x00FF00,
+        interaction,
+      })],
+      flags: 64
     });
   },
 };
