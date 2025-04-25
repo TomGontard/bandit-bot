@@ -3,7 +3,7 @@ const cron = require('node-cron');
 const client = require('../config/client');
 const InviteTrack = require('../services/models/InviteTrack');
 
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/30 * * * *', async () => {
   const guild = await client.guilds.fetch(process.env.GUILD_ID);
   const errandId = process.env.ROLE_ERRAND_ID;
   const muleId = process.env.ROLE_MULE_ID;

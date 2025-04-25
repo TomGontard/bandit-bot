@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const client = require('../config/client');
+require('dotenv').config();
 const { createEmbed } = require('../utils/createEmbed');
 
 // ✅ Toggle to enable or disable this job
@@ -17,7 +18,7 @@ function interpolateEnvVars(text) {
 let messageIndex = 0;
 
 const PUBLICATION_DIR = path.join(__dirname, '../publications');
-const CRON_EXPR = '* */2 * * *'; // every 2 hours
+const CRON_EXPR = '0 */2 * * *'; // every 2 hours
 
 cron.schedule(CRON_EXPR, async () => {
   if (!ENABLE_PUBLICATION) return;
