@@ -1,5 +1,9 @@
 {
-  "type": "text",
-  "channelId": "1360684211266388035",
-  "content": "🚨 **Have you linked your wallet yet?** Use `/savewallet` now and join the ranks of verified Bandits."
+  "type": "embed",
+  "channelId": "env:CHANNEL_GENERAL_ID",
+  "embed": {
+    "title": "<:MULE:1364560650487074858> Want the **Mule** role?",
+    "description": "Invite **3 people** who reach the **Errand** rank and you'll earn the **Mule** role automatically!\n\nUse `/mule` to track your progress 📨",
+    "color": 16750915
+  }
 }
