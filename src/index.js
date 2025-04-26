@@ -10,6 +10,7 @@ registerCommands(client);
 +require('./cron/updateStatsChannels');
 +require('./cron/rotatePublication');
 +require('./cron/checkMuleEligibility');
++require('./cron/whitelistNftSync');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);

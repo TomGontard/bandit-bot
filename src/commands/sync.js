@@ -1,74 +1,65 @@
-// src/commands/sync.js
 const { SlashCommandBuilder } = require('discord.js');
 const { getWalletByDiscordId, getUserLink } = require('../services/userLinkService');
-const { fetchBalances, aggregate } = require('../services/nftChecker');
-const { saveHolding, syncRoles } = require('../services/holdingService');
-const { partners } = require('../config/collections');
-const checkCooldown = require('../utils/cooldown');
-const NFTHolding = require('../services/models/NFTHolding');
-const { createEmbed } = require('../utils/createEmbed');
+const { checkAllPartners }   = require('../services/partnerService');
+const Whitelist              = require('../services/models/Whitelist');
+const { createEmbed }        = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('sync')
-    .setDescription('Check your NFTs and sync your Discord roles'),
+    .setDescription('Sync partner-NFT holdings and whitelist stats'),
 
   async execute(interaction) {
-    const remaining = checkCooldown(interaction.user.id, 'sync');
-    if (remaining) {
-      return interaction.reply({
-        embeds: [createEmbed({
-          title: '⏳ Cooldown Active',
-          description: `Please wait **${Math.ceil(remaining / 1000)} seconds** before using \`/sync\` again.`
-        })],
-        flags: 64,
-      });
-    }
-
+    /* wallet check */
     const wallet = await getWalletByDiscordId(interaction.user.id);
     if (!wallet) {
       return interaction.reply({
         embeds: [createEmbed({
           title: '❌ No Wallet Linked',
-          description: 'Use `/savewallet` first to link your address.'
+          description: 'Use `/savewallet` to link a wallet first.',
+          interaction
         })],
-        flags: 64,
+        flags: 64
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
-    const counts = await fetchBalances(wallet);
-    const { genesis, bandit } = aggregate(counts);
+    /* partner NFTs */
+    const partnerCounts = await checkAllPartners(wallet);     // e.g. { 'GTG Closed-Eye': 2 }
+    const eligibleNFTs  = Object.values(partnerCounts).reduce((a,b)=>a+b,0);
 
-    await saveHolding(interaction.user.id, wallet, counts, genesis, bandit);
+    /* persist whitelist-by-NFT */
+    let wlRec = await Whitelist.findOne({ discordId: interaction.user.id }) ??
+                await Whitelist.create({ discordId: interaction.user.id });
+    wlRec.whitelistsNFTs = eligibleNFTs;
+    await wlRec.save();
 
-    const member = await interaction.guild.members.fetch(interaction.user.id);
-    await syncRoles(member, genesis, bandit);
+    const partnerLines = Object.entries(partnerCounts)
+      .map(([name,cnt]) => `• **${name}**: ${cnt}`)
+      .join('\n') || '_No partner NFTs detected_';
 
-    const lines = partners
-      .filter(p => counts[p.address] > 0)
-      .map(p => `• **${p.name}**: ${counts[p.address]}`);
+    /* totals */
+    const totalWL = wlRec.whitelistsNFTs + wlRec.whitelistsGiven;
+    const link    = await getUserLink(interaction.user.id);
 
-    const list = lines.length ? lines.join('\n') : '_No NFTs detected_';
+    const description = `
+🔗 **Registered wallet:** \`${wallet}\`
 
-    const userLink = await getUserLink(interaction.user.id);
-    const holding = await NFTHolding.findOne({ discordId: interaction.user.id });
+NFTs detected:
+${partnerLines}
+NFTs eligible for whitelist: **${eligibleNFTs}**
 
-    const numberText = userLink?.registrationNumber
-      ? `\n🔢 You are user **#${userLink.registrationNumber}** to link a wallet.`
-      : '';
+🎫 **Total whitelists:** **${totalWL}**
 
-    const whitelistText = holding?.whitelistCount
-      ? `\n🎫 Whitelists earned: **${holding.whitelistCount}**`
-      : '';
+> Selling eligible NFTs removes those whitelist slots.`.trim();
 
     await interaction.editReply({
       embeds: [createEmbed({
         title: '🔍 Sync Complete',
-        description: `Genesis: **${genesis}**\nBandit: **${bandit}**\n\nNFTs detected:\n${list}${numberText}${whitelistText}`,
+        description,
         interaction
-      })],
+      })]
     });
-  },
+  }
 };
