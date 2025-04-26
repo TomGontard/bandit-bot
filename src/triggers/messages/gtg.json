@@ -1,0 +1,10 @@
+{
+  "trigger": ["gtg", "gold teeth gang"],
+  "ignoreAdmins": true,
+  "cooldownSeconds": 180,
+  "embed": {
+    "title": "🤝 Partner Collection: Gold Teeth Gang (GTG)",
+    "color": "#8700ff",
+    "description": "The **Gold Teeth Gang** just joined the Bandit family! \nAll holders of the GTG NFTs with the **Closed Eye** trait get a **whitelist** \n— [check out the announcement on X](https://x.com/monad_bandit/status/1915744255378706709).\n\n🔗 To claim yours, simply run **`/savewallet <your-address>`** \nWait a couple hours and we’ll verify your NFT holdings.\n\n > Selling eligible NFTs will remove your whitelist(s)."
+  }
+}
