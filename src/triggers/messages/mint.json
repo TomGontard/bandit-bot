@@ -1,5 +1,5 @@
 {
-  "trigger": "mint",
+  "trigger": ["mint", "nft", "wen"],
   "ignoreAdmins": false,
   "cooldownSeconds": 180,
   "embed": {
