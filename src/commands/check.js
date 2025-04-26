@@ -1,71 +1,64 @@
-// src/commands/check.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { getUserLink } = require('../services/userLinkService');
-const NFTHolding = require('../services/models/NFTHolding');
-const { partners } = require('../config/collections');
-const { createEmbed } = require('../utils/createEmbed');
+const { getUserLink }      = require('../services/userLinkService');
+const { checkAllPartners } = require('../services/partnerService');
+const Whitelist            = require('../services/models/Whitelist');
+const { createEmbed }      = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('check')
-    .setDescription('Inspect the Web3 info of a specific user')
-    .addUserOption(opt =>
-      opt.setName('utilisateur')
-        .setDescription('The user to inspect')
+    .setDescription('Admin • Inspect partner-NFT holdings and whitelists')
+    .addUserOption(o =>
+      o.setName('user')
+        .setDescription('User to inspect')
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // admin only
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
-    const member = interaction.options.getUser('utilisateur');
-    const discordId = member.id;
+    const target = interaction.options.getUser('user');
 
-    const userLink = await getUserLink(discordId);
-    const holding = await NFTHolding.findOne({ discordId });
-
-    if (!userLink || !holding) {
+    const link = await getUserLink(target.id);
+    if (!link) {
       return interaction.reply({
         embeds: [createEmbed({
-          title: '❌ User Not Found',
-          description: `No Web3 data found for <@${discordId}>.`,
+          title: '❌ No Wallet Linked',
+          description: `<@${target.id}> hasn’t linked any wallet yet.`,
           interaction
         })],
-        flags: 64,
+        flags: 64
       });
     }
 
-    const wallet = userLink.wallet;
-    const registrationNumber = userLink.registrationNumber;
-    const genesis = holding.genesis || 0;
-    const bandit = holding.bandit || 0;
-    const whitelist = holding.whitelistCount || 0;
+    await interaction.deferReply({ flags: 64 });
 
-    const lines = partners
-      .filter(p => holding.counts.get(p.address) > 0)
-      .map(p => `• **${p.name}**: ${holding.counts.get(p.address)}`);
+    const partnerCounts = await checkAllPartners(link.wallet);
+    const eligibleNFTs  = Object.values(partnerCounts).reduce((a,b)=>a+b,0);
+    const partnerLines  = Object.entries(partnerCounts)
+      .map(([n,c]) => `• **${n}**: ${c}`)
+      .join('\n') || '_No partner NFTs detected_';
 
-    const list = lines.length ? lines.join('\n') : '_No NFTs held_';
+    const wlRec   = await Whitelist.findOne({ discordId: target.id }) ?? { whitelistsNFTs: 0, whitelistsGiven: 0 };
+    const totalWL = wlRec.whitelistsNFTs + wlRec.whitelistsGiven;
 
-    const embed = createEmbed({
-      title: `👤 Details for ${member.tag}`,
-      description:
-        ` 👤 **Details for <@${discordId}>**
-          🧾 Wallet: \`${wallet}\`
-          🔢 Registered as user #${registrationNumber}
-          🎫 Whitelists received: **${whitelist}**
+    const description = `
+🔗 **Registered wallet:** \`${link.wallet}\`
 
-          🎟️ Genesis: **${genesis}**
-          🤠 Bandit: **${bandit}**
+NFTs detected:
+${partnerLines}
 
-          🧩 NFT collections breakdown:
-          ${list}
-          `,
-      interaction
+NFTs eligible for whitelist: **${eligibleNFTs}**
+
+🎫 **Total whitelists:** **${totalWL}**
+ • via NFTs: **${wlRec.whitelistsNFTs}**
+ • staff-given: **${wlRec.whitelistsGiven}**`.trim();
+
+    await interaction.editReply({
+      embeds: [createEmbed({
+        title: `📋 Sync Info for ${target.tag}`,
+        description,
+        interaction
+      })]
     });
-
-    await interaction.reply({
-      embeds: [embed],
-      flags: 64,
-    });
-  },
+  }
 };
