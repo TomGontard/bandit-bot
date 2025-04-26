@@ -1,6 +1,6 @@
 {
   "trigger": ["mint", "nft", "wen"],
-  "ignoreAdmins": false,
+  "ignoreAdmins": true,
   "cooldownSeconds": 180,
   "embed": {
     "title": "🧪 When’s the Mint?",

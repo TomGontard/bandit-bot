@@ -1,6 +1,6 @@
 {
   "trigger": "wallet",
-  "ignoreAdmins": false,
+  "ignoreAdmins": true,
   "cooldownSeconds": 180,
   "embed": {
     "title": "🔐 Link your wallet. Claim your identity.",
