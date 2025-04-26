@@ -2,9 +2,10 @@
 const mongoose = require('mongoose');
 
 const InviteTrackSchema = new mongoose.Schema({
-  invitedId: { type: String, required: true, unique: true },
-  inviterId: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
-});
+  inviterId: { type: String, required: true, unique: true },
+  invitedId: { type: String},
+  invitedIds: { type: [String], default: [] },
+  invitedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
 
 module.exports = mongoose.model('InviteTrack', InviteTrackSchema);

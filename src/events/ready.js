@@ -1,23 +1,37 @@
 // src/events/ready.js
-const { getWalletByDiscordId } = require('../services/userLinkService');
-
-let cachedInvites = new Map();
+const { saveInviteSnapshot, loadCachedInvites } = require('../utils/inviteUtils');
 
 module.exports = {
   name: 'ready',
   once: true,
-  execute(client) {
-    console.log(`✅ Bot connecté en tant que ${client.user.tag}`);
-  },
-};
+  async execute(client) {
+    const guildId = process.env.GUILD_ID;
+    const guild = await client.guilds.fetch(guildId);
 
-execute: async (client) => {
-  console.log(`✅ Connecté en tant que ${client.user.tag}`);
-  
-  // Test : remplace par ton ID Discord
-  const wallet = await getWalletByDiscordId('cubionix');
-  console.log('Wallet associé :', wallet || 'Aucun');
-  const guild = await client.guilds.fetch(process.env.GUILD_ID);
-  cachedInvites = await guild.invites.fetch();
-  client.cachedInvites = cachedInvites;
-}
+    try {
+      // 🧠 Try fetching invites from Discord
+      const invites = await guild.invites.fetch();
+      const mapped = invites.reduce((acc, invite) => {
+        acc.set(invite.code, invite.uses || 0);
+        return acc;
+      }, new Map());
+
+      client.cachedInvites = mapped;
+
+      // 💾 Backup to DB
+      await saveInviteSnapshot(guild);
+      console.log('📦 Invite cache loaded and snapshot saved from Discord');
+
+    } catch (err) {
+      console.warn('⚠️ Failed to fetch invites from Discord. Falling back to DB…');
+
+      // 🧱 Fallback to Mongo cache
+      const fallback = await loadCachedInvites(guild.id);
+      client.cachedInvites = fallback;
+
+      console.log('📦 Cached invites loaded from database fallback');
+    }
+
+    console.log(`✅ Logged in as ${client.user.tag}`);
+  }
+};

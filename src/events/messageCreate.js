@@ -1,12 +1,16 @@
+// src/events/messageCreate.js
 const fs = require('fs');
 const path = require('path');
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const cooldownMap = new Map(); // key = trigger:channelId, value = timestamp
+const { PermissionsBitField } = require('discord.js');
+const { createEmbed } = require('../utils/createEmbed');
 
-const loadJsons = (dirPath) =>
-  fs.readdirSync(dirPath)
+const cooldownMap = new Map(); // key = word:channelId , value = timestamp
+
+/* ---------- load trigger JSON files ---------- */
+const loadJsons = dir =>
+  fs.readdirSync(dir)
     .filter(f => f.endsWith('.json'))
-    .map(f => require(path.join(dirPath, f)));
+    .map(f => require(path.join(dir, f)));
 
 const embedTriggers = loadJsons(path.join(__dirname, '../triggers/messages'));
 const emojiTriggers = loadJsons(path.join(__dirname, '../triggers/emojis'));
@@ -17,45 +21,49 @@ module.exports = {
     if (message.author.bot) return;
 
     const content = message.content.toLowerCase();
-    const member = await message.guild.members.fetch(message.author.id);
+    const member  = await message.guild.members.fetch(message.author.id);
 
-    // 🔹 Embed triggers
-    for (const trigger of embedTriggers) {
-      if (!content.includes(trigger.trigger)) continue;
-      if (trigger.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
+    /* ───────────── EMBED triggers ───────────── */
+    for (const trig of embedTriggers) {
+      const words = Array.isArray(trig.trigger) ? trig.trigger : [trig.trigger];
+      if (!words.some(w => content.includes(w))) continue;
+      if (trig.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
 
-      const cooldownKey = `${trigger.trigger}:${message.channel.id}`;
-      const lastUsed = cooldownMap.get(cooldownKey);
-      const now = Date.now();
-      const cooldownMs = (trigger.cooldownSeconds || 0) * 1000;
+      const primary   = words[0]; // used for cooldown key
+      const key       = `${primary}:${message.channel.id}`;
+      const lastUsed  = cooldownMap.get(key);
+      const now       = Date.now();
+      const cooldown  = (trig.cooldownSeconds || 0) * 1000;
+      if (lastUsed && now - lastUsed < cooldown) continue;
+      cooldownMap.set(key, now);
 
-      if (lastUsed && now - lastUsed < cooldownMs) continue;
-      cooldownMap.set(cooldownKey, now);
+      const embed = createEmbed({
+        title:       trig.embed.title,
+        description: trig.embed.description,
+        color:       trig.embed.color,
+        // simulate interaction for footer
+        interaction: { client: message.client, guild: message.guild },
+      });
 
-      const embed = new EmbedBuilder()
-        .setColor(trigger.embed.color || 0x8B00FF)
-        .setTitle(trigger.embed.title)
-        .setDescription(trigger.embed.description)
-        .setFooter({ text: 'BanditBot • Monad powered' });
-
-      return await message.channel.send({ embeds: [embed] });
+      await message.channel.send({ embeds: [embed] });
+      return; // only one trigger per message
     }
 
+    /* ───────────── EMOJI triggers ───────────── */
+    for (const trig of emojiTriggers) {
+      const words = Array.isArray(trig.trigger) ? trig.trigger : [trig.trigger];
+      if (!words.some(w => content.includes(w))) continue;
+      if (trig.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
 
-    // 🔹 Emoji triggers
-    for (const trigger of emojiTriggers) {
-      if (!content.includes(trigger.trigger)) continue;
-      if (trigger.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
+      const emojiName = trig.emojis[Math.floor(Math.random() * trig.emojis.length)];
+      const emoji     = message.guild.emojis.cache.find(e => e.name.toUpperCase() === emojiName);
 
-      const emojis = trigger.emojis;
-      const emojiName = emojis[Math.floor(Math.random() * emojis.length)];
-
-      const emoji = message.guild.emojis.cache.find(e => e.name.toUpperCase() === emojiName);
       if (emoji) {
-        return await message.react(emoji);
+        await message.react(emoji);
       } else {
         console.warn(`⚠️ Emoji :${emojiName}: not found in guild.`);
       }
+      return;
     }
-  }
+  },
 };

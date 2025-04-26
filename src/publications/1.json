@@ -1,0 +1,9 @@
+{
+  "type": "embed",
+  "channelId": "env:CHANNEL_GENERAL_ID",
+  "embed": {
+    "title": "💼 Link your wallet to unlock roles!",
+    "description": "Use `/savewallet` to link your Monad wallet.\nThen `/sync` to sync your roles.\n\n🔐 Linked users can earn perks, access events, and prove their worth in the gang!",
+    "color": 16750848
+  }
+}

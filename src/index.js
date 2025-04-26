@@ -8,7 +8,8 @@ const connectToMongoDB = require('./services/mongo');
 registerCommands(client);
 +require('./cron/scheduler');
 +require('./cron/updateStatsChannels');
-
++require('./cron/rotatePublication');
++require('./cron/checkMuleEligibility');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);

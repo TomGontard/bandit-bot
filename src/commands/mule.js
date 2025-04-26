@@ -1,35 +1,62 @@
 // src/commands/mule.js
 const { SlashCommandBuilder } = require('discord.js');
-const InviteTrack = require('../services/models/InviteTrack');
+const Invite   = require('../services/models/Invite');
+const UserLink = require('../services/models/UserLink');
+const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('mule')
-    .setDescription("Check how many users you’ve invited and how many became Errand"),
+    .setDescription('Show your invite stats & Mule eligibility'),
 
   async execute(interaction) {
-    const discordId = interaction.user.id;
-    const guild = interaction.guild;
-    const errandRoleId = process.env.ROLE_ERRAND_ID;
+    await interaction.deferReply({ ephemeral: true });   // <─ keeps the token alive
 
-    const invites = await InviteTrack.find({ inviterId: discordId });
-    const total = invites.length;
+    const guild      = interaction.guild;
+    const inviterId  = interaction.user.id;
+    const errandId   = process.env.ROLE_ERRAND_ID;
+    const muleId     = process.env.ROLE_MULE_ID;
 
-    let valid = 0;
+    // ── fetch invite document ────────────────────────────────
+    const doc          = await Invite.findOne({ inviterId });
+    const invitedIds   = doc?.invitedIds ?? [];
+    const totalInvited = invitedIds.length;
 
-    for (const invite of invites) {
-      const member = await guild.members.fetch(invite.invitedId).catch(() => null);
-      if (member?.roles.cache.has(errandRoleId)) valid++;
+    // ── how many reached Errand? ─────────────────────────────
+    let errandCount = 0;
+    if (totalInvited) {
+      const members = await Promise.all(
+        invitedIds.map(id => guild.members.fetch(id).catch(() => null))
+      );
+      errandCount = members.filter(m => m?.roles.cache.has(errandId)).length;
     }
 
-    await interaction.reply({
-      ephemeral: true,
-      content:
-        `📨 You have invited **${total}** member(s)\n` +
-        `✅ Of those, **${valid}** have reached the rank of **Errand**\n\n` +
-        (valid >= 3
-          ? "🐴 You are eligible for the **Mule** role — or you already have it!"
-          : `🏃 Invite **${3 - valid}** more Errands to get the **Mule** role!`)
+    // ── how many linked wallet? ──────────────────────────────
+    const walletCount = await UserLink.countDocuments({
+      discordId: { $in: invitedIds },
     });
-  }
+
+    // ── give Mule role instantly if eligible ────────────────
+    const member = await guild.members.fetch(inviterId);
+    if (errandCount >= 3 && !member.roles.cache.has(muleId)) {
+      await member.roles.add(muleId, 'Invited 3 Errand members');
+    }
+
+    // ── build & send embed ──────────────────────────────────
+    const embed = createEmbed({
+      interaction,
+      title: '<:MULE:1364560650487074858> Mule Progress',
+      description: [
+        `📨 You invited **${totalInvited}** member(s)`,
+        `✅ **${errandCount}** reached **Errand**`,
+        `💼 **${walletCount}** linked a wallet`,
+        '',
+        errandCount >= 3
+          ? '🎉 You are **eligible** for the **Mule** role — or you already have it!'
+          : `🏃 Invite **${3 - errandCount}** more Errands to unlock **Mule**.`,
+      ].join('\n'),
+    });
+
+    await interaction.editReply({ embeds: [embed] });
+  },
 };

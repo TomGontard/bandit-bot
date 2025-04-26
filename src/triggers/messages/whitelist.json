@@ -1,0 +1,10 @@
+{
+  "trigger": ["whitelist", "wl"],
+  "ignoreAdmins": false,
+  "cooldownSeconds": 180,
+  "embed": {
+    "title": "🎫 How do I get on the Whitelist?",
+    "color": 16749079,
+    "description": "**Only proven Bandits earn a spot.**\n\n• <:MULE:1364560650487074858> **Earn roles** → (`/mule` to track your progression)\n• 💬 Stay active, share alpha, help others in <#1360638604107317452>\n• 📸 Post your creations & tweets in <#1360654139264340280>\n• 🎯 Stay updated of contests & partnerships in <#1364368602643562546>\n\n> _“In the Hideout, a whitelist is the key to the vault.”_"
+  }
+}

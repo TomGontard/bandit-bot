@@ -1,10 +1,10 @@
 {
   "trigger": "role",
-  "ignoreAdmins": true,
+  "ignoreAdmins": false,
   "cooldownSeconds": 180,
   "embed": {
-    "title": "📛 Wanna climb the Bandit ranks?",
+    "title": "🧠 Want a role? Earn it like a Bandit.",
     "color": 16749079,
-    "description": "**🧠 Only real Bandits earn roles.** Here's how to make your mark:\n\n### 🧢 Monad Discord Role Hierarchy (bypass)\n- **Mon** → **BOSS** <:BOSS:1364560696163172353>\n- **Nad OG** → **UNDERBOSS** <:UNDERBOSS:1364560681684303902>\n- **Nad** → **GANGSTER** <:GANGSTER:1364560667176206336>\n- **Full Access** → **MULE** <:MULE:1364560650487074858>\n\n### Ain't got no bypass ? Fair enough.\n\n### ⛰️ To rise otherwise, you gotta grind your way up !\n• 🎯 Participate in events: <#1364368602643562546>\n• 💬 Be active in the community: reply, meme, alpha drop, help others\n• 💡 Give ideas and support initiatives\n• 📸 Post your creations / tweet: <#1360654139264340280>\n• 🐦 Tag us on Twitter → [@monad_bandit](https://twitter.com/monad_bandit)\n\n> _\"In this city, roles ain’t given… they’re **earned**.\"_ – An old Bandit"
+    "description": "Only verified Bandits earn ranks on Monad.\n\nCheck the full guide in <#1360641177149247635>\n\n> _“Roles ain't given… they're **earned**.”_"
   }
 }

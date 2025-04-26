@@ -1,22 +1,34 @@
 // src/events/guildMemberAdd.js
-const InviteTrack = require('../services/models/InviteTrack');
+const Invite = require('../services/models/Invite');
 
 module.exports = {
-  name: 'guildMemberAdd',
+  name : 'guildMemberAdd',
   async execute(member) {
-    const newInvites = await member.guild.invites.fetch();
-    const oldInvites = member.client.cachedInvites;
-    member.client.cachedInvites = newInvites;
+    // 1️⃣  Detect which invite link was used
+    const latestInvites = await member.guild.invites.fetch();
+    const cache         = member.client.cachedInvites || new Map();
 
-    const used = newInvites.find(inv => oldInvites.get(inv.code)?.uses < inv.uses);
+    let used = null;
+    for (const inv of latestInvites.values()) {
+      const prevUses = cache.get(inv.code) || 0;
+      if (inv.uses > prevUses) {
+        used = inv;
+        break;
+      }
+    }
+
+    // Refresh cache
+    member.client.cachedInvites = latestInvites.reduce((m, i) => m.set(i.code, i.uses), new Map());
+
+    // 2️⃣  Persist in DB (avoids duplicates thanks to $addToSet)
     const inviter = used?.inviter;
-
     if (inviter) {
-      await InviteTrack.create({
-        invitedId: member.user.id,
-        inviterId: inviter.id
-      });
+      await Invite.findOneAndUpdate(
+        { inviterId: inviter.id },
+        { $addToSet: { invitedIds: member.user.id } },
+        { upsert: true, new: true },
+      );
       console.log(`📥 ${inviter.tag} invited ${member.user.tag}`);
     }
-  }
+  },
 };
