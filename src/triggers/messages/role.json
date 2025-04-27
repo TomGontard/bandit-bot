@@ -1,7 +1,8 @@
 {
   "trigger": "role",
   "ignoreAdmins": true,
-  "cooldownSeconds": 180,
+  "active": true,
+  "cooldownSeconds": 300,
   "embed": {
     "title": "🧠 Want a role? Earn it like a Bandit.",
     "color": 16749079,

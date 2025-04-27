@@ -4,9 +4,9 @@ const path = require('path');
 const { PermissionsBitField } = require('discord.js');
 const { createEmbed } = require('../utils/createEmbed');
 
-const cooldownMap = new Map(); // key = word:channelId , value = timestamp
+const cooldownMap = new Map();             // key = word:channelId → last timestamp
 
-/* ---------- load trigger JSON files ---------- */
+/* ---------- load *.json trigger files ---------- */
 const loadJsons = dir =>
   fs.readdirSync(dir)
     .filter(f => f.endsWith('.json'))
@@ -22,40 +22,43 @@ module.exports = {
 
     const content = message.content.toLowerCase();
     const member  = await message.guild.members.fetch(message.author.id);
+    const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
 
     /* ───────────── EMBED triggers ───────────── */
-    for (const trig of embedTriggers) {
-      const words = Array.isArray(trig.trigger) ? trig.trigger : [trig.trigger];
-      if (!words.some(w => content.includes(w))) continue;
-      if (trig.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
+    for (const trg of embedTriggers) {
+      const words = Array.isArray(trg.trigger) ? trg.trigger : [trg.trigger];
 
-      const primary   = words[0]; // used for cooldown key
-      const key       = `${primary}:${message.channel.id}`;
-      const lastUsed  = cooldownMap.get(key);
-      const now       = Date.now();
-      const cooldown  = (trig.cooldownSeconds || 0) * 1000;
-      if (lastUsed && now - lastUsed < cooldown) continue;
+      /** ––– eligibility checks ––– */
+      if (!words.some(w => content.includes(w)))                              continue;   // keyword not present
+      if (!trg.active && !isAdmin)                                            continue;   // disabled for users
+      if (trg.ignoreAdmins && isAdmin)                                        continue;   // optional “skip admins”
+      /* cooldown */
+      const key = `${words[0]}:${message.channel.id}`;
+      const now = Date.now();
+      if (cooldownMap.get(key) && now - cooldownMap.get(key) < (trg.cooldownSeconds ?? 0) * 1000) continue;
       cooldownMap.set(key, now);
 
+      /** ––– send embed ––– */
       const embed = createEmbed({
-        title:       trig.embed.title,
-        description: trig.embed.description,
-        color:       trig.embed.color,
-        // simulate interaction for footer
-        interaction: { client: message.client, guild: message.guild },
+        title:       trg.embed.title,
+        description: trg.embed.description,
+        color:       trg.embed.color,
+        // fake interaction for footer (guild icon etc.)
+        interaction: { client: message.client, guild: message.guild }
       });
-
       await message.channel.send({ embeds: [embed] });
-      return; // only one trigger per message
+      return; // fire max-one trigger per message
     }
 
     /* ───────────── EMOJI triggers ───────────── */
-    for (const trig of emojiTriggers) {
-      const words = Array.isArray(trig.trigger) ? trig.trigger : [trig.trigger];
-      if (!words.some(w => content.includes(w))) continue;
-      if (trig.ignoreAdmins && member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
+    for (const trg of emojiTriggers) {
+      const words = Array.isArray(trg.trigger) ? trg.trigger : [trg.trigger];
 
-      const emojiName = trig.emojis[Math.floor(Math.random() * trig.emojis.length)];
+      if (!words.some(w => content.includes(w)))                              continue;
+      if (!trg.active && !isAdmin)                                            continue;
+      if (trg.ignoreAdmins && isAdmin)                                        continue;
+
+      const emojiName = trg.emojis[Math.floor(Math.random() * trg.emojis.length)];
       const emoji     = message.guild.emojis.cache.find(e => e.name.toUpperCase() === emojiName);
 
       if (emoji) {

@@ -1,0 +1,11 @@
+{
+  "trigger": ["realschim", "rschim"],
+  "ignoreAdmins": true,
+  "active": false,
+  "cooldownSeconds": 300,
+  "embed": {
+    "title": "🖼️ Partner Collection: RealSchim",
+    "color": "#00B894",
+    "description": "**RealSchim** masterpieces now grant **1 whitelist** each — [official tweet](https://x.com/monad_bandit/status/XXXXX).\n\nLink your wallet with **`/savewallet`** and the whitelist drops soon.\n\n> _“Art meets heist.”_"
+  }
+}
