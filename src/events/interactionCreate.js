@@ -4,15 +4,26 @@ module.exports = {
   execute: async (interaction, client) => {
 
     // ✅ Handles clickable buttons (customId)
+    /* --------------------------------------------------------- */
     if (interaction.isButton()) {
-      const command = interaction.customId;
+      const generalPing = `<#${process.env.CHANNEL_GENERAL_ID}>`;   // 👈 ping dynamique
 
-      // Simple response prompting the user to use the slash command
-      return await interaction.reply({
-        content: `🧠 Just type \`/${command}\` in this channel to get started.`,
-        ephemeral: true,
+      const guide =
+      `### 🔐 Getting started
+      1️⃣  \`/savewallet <address>\` – link your Monad wallet  
+      2️⃣  \`/checkwallet\` – make sure the link is saved  
+      3️⃣  \`/sync\` – unlock roles, giveaways & partner perks  
+
+      Join the conversation in ${generalPing} and don’t miss any update!`;
+
+      await interaction.reply({
+        content: guide,
+        flags: 64,          // 64 = MessageFlags.Ephemeral
       });
+      return;
     }
+
+
 
     // ✅ Handles regular slash commands
     if (!interaction.isChatInputCommand()) return;
