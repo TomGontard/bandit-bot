@@ -1,5 +1,6 @@
 {
   "trigger": "gbandit",
   "ignoreAdmins": false,
+  "active": true,
   "emojis": ["COOL", "LOL", "GRINNING"]
 }
