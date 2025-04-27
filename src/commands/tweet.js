@@ -163,7 +163,7 @@ async function handlePost(interaction) {
     // confirm
     await safeRespond(btnInt, () => btnInt.deferUpdate());
 
-    const channel = await interaction.guild.channels.fetch(process.env.CHANNEL_LOGS_ID);
+    const channel = await interaction.guild.channels.fetch(process.env.CHANNEL_TWITTER_ID);
     const ping    = process.env.ROLE_ERRAND_ID ? `<@&${process.env.ROLE_ERRAND_ID}> ` : '';
     await channel.send({
       content: `${ping}New tweet gang ! 🤘🔥\n${url}`,
