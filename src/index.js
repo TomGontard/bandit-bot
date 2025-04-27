@@ -1,12 +1,12 @@
 // src/index.js
 require('dotenv').config();
+require('events').defaultMaxListeners = 20;
 const client = require('./config/client');
 const registerEvents = require('./events');
 const registerCommands = require('./commands');
 const connectToMongoDB = require('./services/mongo');
 registerCommands(client);
 +require('./cron/scheduler');
-+require('./cron/twitterRelay');
 +require('./cron/updateStatsChannels');
 +require('./cron/rotatePublication');
 +require('./cron/checkMuleEligibility');
