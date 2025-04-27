@@ -1,6 +1,6 @@
-// src/commands/invited.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const InviteTrack = require('../services/models/InviteTrack');
+const Invite = require('../services/models/Invite');
+const UserLink = require('../services/models/UserLink');
 const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
@@ -15,18 +15,29 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
+    await interaction.deferReply({ ephemeral: true });
+
     const user = interaction.options.getUser('user');
     const guild = interaction.guild;
-    const errandRoleId = process.env.ROLE_ERRAND_ID;
+    const errandId = process.env.ROLE_ERRAND_ID;
 
-    const dbInvites = await InviteTrack.find({ inviterId: user.id });
-    const total = dbInvites.length;
+    const doc = await Invite.findOne({ inviterId: user.id });
+    const invitedIds = doc?.invitedIds ?? [];
+    const total = invitedIds.length;
 
-    let confirmed = 0;
-    for (const invite of dbInvites) {
-      const member = await guild.members.fetch(invite.invitedId).catch(() => null);
-      if (member?.roles.cache.has(errandRoleId)) confirmed++;
+    let errandAndWallet = 0;
+
+    for (const id of invitedIds) {
+      const member = await guild.members.fetch(id).catch(() => null);
+      if (member?.roles.cache.has(errandId)) {
+        const hasWallet = await UserLink.exists({ discordId: id });
+        if (hasWallet) errandAndWallet++;
+      }
     }
+
+    const walletCount = await UserLink.countDocuments({
+      discordId: { $in: invitedIds }
+    });
 
     const allInvites = await guild.invites.fetch();
     const userInvites = allInvites.filter(inv => inv.inviter?.id === user.id);
@@ -40,10 +51,11 @@ module.exports = {
 
     const description =
       `📨 <@${user.id}> has invited **${total}** member(s)\n` +
-      `✅ Among them, **${confirmed}** reached the **Errand** role\n` +
-      (confirmed >= 3
+      `✅ **${errandAndWallet}** reached **Errand** and linked wallet\n` +
+      `💼 **${walletCount}** linked a wallet\n` +
+      (errandAndWallet >= 3
         ? `🐴 Eligible for the **Mule** role`
-        : `🏃 Needs **${3 - confirmed}** more to reach Mule eligibility`) +
+        : `🏃 Needs **${3 - errandAndWallet}** more to unlock Mule eligibility`) +
       (inviteLines.length
         ? `\n\n📬 **Invite links created by <@${user.id}>**:\n${inviteLines.join('\n')}`
         : `\n\n📬 <@${user.id}> has not created any invite links.`);
@@ -54,11 +66,6 @@ module.exports = {
       interaction,
     });
 
-    await interaction.reply({
-      embeds: [embed],
-      flags: 64,
-    });
+    await interaction.editReply({ embeds: [embed] });
   },
 };
-
-
