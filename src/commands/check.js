@@ -1,3 +1,4 @@
+// src/commands/check.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getUserLink }      = require('../services/userLinkService');
 const { checkAllPartners } = require('../services/partnerService');
@@ -7,16 +8,16 @@ const { createEmbed }      = require('../utils/createEmbed');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('check')
-    .setDescription('Admin • Inspect partner-NFT holdings and whitelists')
+    .setDescription('Inspect wallet info and whitelist stats')
     .addUserOption(o =>
       o.setName('user')
         .setDescription('User to inspect')
         .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    ),
 
   async execute(interaction) {
-    const target = interaction.options.getUser('user');
+    const target   = interaction.options.getUser('user');
+    const isAdmin  = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
     const link = await getUserLink(target.id);
     if (!link) {
@@ -30,6 +31,19 @@ module.exports = {
       });
     }
 
+    // Non-admins only get a basic response
+    if (!isAdmin) {
+      return interaction.reply({
+        embeds: [createEmbed({
+          title: '🔗 Wallet Info',
+          description: `<@${target.id}> has linked a wallet.`,
+          interaction
+        })],
+        flags: 64
+      });
+    }
+
+    // Admins get full breakdown
     await interaction.deferReply({ flags: 64 });
 
     const partnerCounts = await checkAllPartners(link.wallet);
@@ -43,6 +57,7 @@ module.exports = {
 
     const description = `
 🔗 **Registered wallet:** \`${link.wallet}\`
+🔢 **Registration #**: ${link.registrationNumber}
 
 NFTs detected:
 ${partnerLines}

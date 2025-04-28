@@ -1,5 +1,5 @@
 {
-  "trigger": ["mint", "nft", "wen"],
+  "trigger": ["mint", "wen"],
   "ignoreAdmins": true,
   "active": true,
   "cooldownSeconds": 300,
