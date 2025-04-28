@@ -1,7 +1,7 @@
 // src/commands/savewallet.js
 const { SlashCommandBuilder } = require('discord.js');
 const { isAddress } = require('ethers');
-const { createOrUpdateUserLink, isWalletLinked } = require('../services/userLinkService');
+const { createOrUpdateUserLink, isWalletLinked, getWalletByDiscordId } = require('../services/userLinkService');
 const { createEmbed } = require('../utils/createEmbed');
 
 module.exports = {
@@ -31,7 +31,21 @@ module.exports = {
       });
     }
 
-    // 🔐 Already linked
+    // 🔍 Already registered by the same user?
+    const currentWallet = await getWalletByDiscordId(discordId);
+    if (currentWallet?.toLowerCase() === wallet.toLowerCase()) {
+      return interaction.reply({
+        embeds: [createEmbed({
+          title: '✅ Already Linked',
+          description: 'This wallet is already linked to your account.\nYou’re all set for raffles, giveaways, and whitelists!',
+          color: 0x00CC66,
+          interaction,
+        })],
+        flags: 64
+      });
+    }
+
+    // ❌ Already registered by another user?
     const alreadyLinked = await isWalletLinked(wallet);
     if (alreadyLinked) {
       return interaction.reply({
@@ -44,9 +58,8 @@ module.exports = {
       });
     }
 
-    // ✅ Link wallet
+    // ✅ Link new wallet
     const user = await createOrUpdateUserLink(discordId, wallet);
-
     return interaction.reply({
       embeds: [createEmbed({
         title: '✅ Wallet Linked',
