@@ -1,9 +1,9 @@
-// src/commands/sync.js
 const { SlashCommandBuilder } = require('discord.js');
 const { getWalletByDiscordId, getUserLink } = require('../services/userLinkService');
 const { checkAllPartners } = require('../services/partnerService');
 const Whitelist = require('../services/models/Whitelist');
 const { createEmbed } = require('../utils/createEmbed');
+const { roles: roleWeights, registrationMultipliers } = require('../config/giveawayWeights');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -47,16 +47,8 @@ module.exports = {
 
     // Discord role weight
     const member = await interaction.guild.members.fetch(interaction.user.id);
-    const weights = {
-      [process.env.ROLE_ERRAND_ID]: 1.00,
-      [process.env.ROLE_MULE_ID]: 1.25,
-      [process.env.ROLE_GANGSTER_ID]: 1.50,
-      [process.env.ROLE_UNDERBOSS_ID]: 1.75,
-      [process.env.ROLE_BOSS_ID]: 2.00,
-    };
-
     let roleMultiplier = 1.0;
-    for (const [roleId, weight] of Object.entries(weights)) {
+    for (const [roleId, weight] of Object.entries(roleWeights)) {
       if (member.roles.cache.has(roleId)) {
         roleMultiplier = Math.max(roleMultiplier, weight);
       }
@@ -65,9 +57,12 @@ module.exports = {
     // Bonus multiplier based on registration number (earlier users get better odds)
     let regMultiplier = 1.0;
     if (typeof regNumber === 'number') {
-      if (regNumber <= 100) regMultiplier = 1.5;
-      else if (regNumber <= 250) regMultiplier = 1.25;
-      else if (regNumber <= 500) regMultiplier = 1.1;
+      for (const { min, max, weight } of registrationMultipliers) {
+        if (regNumber >= min && regNumber <= max) {
+          regMultiplier = weight;
+          break;
+        }
+      }
     }
 
     const finalChances = Math.round(roleMultiplier * regMultiplier * 100);
