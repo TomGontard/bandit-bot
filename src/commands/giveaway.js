@@ -102,7 +102,7 @@ module.exports = {
 
     // fetch announcement channel and role-ping
     const annCh = await guild.channels.fetch(process.env.CHANNEL_REWARDS_ID);
-    const ping  = `<@&${process.env.ROLE_ERRAND_ID}>`;
+    const ping  = `@everyone`;
     
     if (partner) {
       // ── Partner giveaway (no DB changes) ──

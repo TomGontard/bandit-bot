@@ -1,8 +1,6 @@
-// src/commands/whitelist.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const Whitelist = require('../services/models/Whitelist');
 const { createEmbed } = require('../utils/createEmbed');
-const partnerCollections = require('../config/partnerCollections');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,7 +20,7 @@ module.exports = {
     .addSubcommand(sub =>
       sub
         .setName('add')
-        .setDescription('Add whitelists to a user (Admin only)')
+        .setDescription('Add whitelists to a user')
         .addUserOption(opt =>
           opt
             .setName('user')
@@ -45,7 +43,7 @@ module.exports = {
     .addSubcommand(sub =>
       sub
         .setName('remove')
-        .setDescription('Remove whitelists from a user (Admin only)')
+        .setDescription('Remove whitelists from a user')
         .addUserOption(opt =>
           opt
             .setName('user')
@@ -73,20 +71,23 @@ module.exports = {
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
-    const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
-    let target = interaction.options.getUser('user') || interaction.user;
+    const member = interaction.member;
+    const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+    const isMod = member.roles.cache.has(process.env.ROLE_MOD_ID);
+    const isStaff = isAdmin || isMod;
 
-    if ((sub === 'add' || sub === 'remove') && !isAdmin) {
+    const target = interaction.options.getUser('user') || interaction.user;
+
+    if ((sub === 'add' || sub === 'remove') && !isStaff) {
       return interaction.reply({ content: '❌ You do not have permission for this action.', ephemeral: true });
     }
 
     if (sub === 'total') {
-      if (!isAdmin) return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
+      if (!isStaff) return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
 
       const all = await Whitelist.find({});
-
       const staff = all.reduce((sum, r) => sum + r.whitelistsGiven, 0);
-      const nfts  = all.reduce((sum, r) => sum + r.whitelistsNFTs, 0);
+      const nfts = all.reduce((sum, r) => sum + r.whitelistsNFTs, 0);
       const total = staff + nfts;
 
       const embed = createEmbed({
@@ -106,7 +107,6 @@ module.exports = {
 
     if (sub === 'info') {
       let description;
-
       if (isAdmin) {
         const logs = record.whitelistsLogs.length
           ? record.whitelistsLogs.map(log => {
@@ -148,8 +148,17 @@ module.exports = {
     const delta   = sub === 'add' ? amt : -amt;
 
     record.whitelistsGiven = Math.max(0, record.whitelistsGiven + delta);
-    record.whitelistsLogs.push({ type: 'manual', amount: delta, reason, staffId });
+    record.whitelistsLogs.push({
+      type: 'manual',
+      amount: delta,
+      reason,
+      staffId,
+      date: new Date()
+    });
+
     await record.save();
+
+    console.log(`[WHITELIST] ${delta > 0 ? '+' : ''}${delta} WL to @${target.tag} by @${interaction.user.tag} (Reason: ${reason})`);
 
     const embed = createEmbed({
       interaction,
