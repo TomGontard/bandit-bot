@@ -164,7 +164,7 @@ async function handlePost(interaction) {
     await safeRespond(btnInt, () => btnInt.deferUpdate());
 
     const channel = await interaction.guild.channels.fetch(process.env.CHANNEL_TWITTER_ID);
-    const ping    = process.env.ROLE_ERRAND_ID ? `<@&${process.env.ROLE_ERRAND_ID}> ` : '';
+    const ping  = `@everyone`;
     await channel.send({
       content: `${ping}New tweet gang ! 🤘🔥\n${url}`,
       components: [buildTwitterButtons(tweetId)],
