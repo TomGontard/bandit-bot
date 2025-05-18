@@ -7,6 +7,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('frenchnads')
     .setDescription('Register yourself or someone else (admin only) as a FrenchNad')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addUserOption(opt =>
       opt.setName('user')
         .setDescription('User to register (admin only)')
