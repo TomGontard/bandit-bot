@@ -1,11 +1,11 @@
 {
-  "trigger": ["mint", "wen"],
+  "trigger": ["mint", "wen", "site", "website"],
   "ignoreAdmins": true,
   "active": true,
-  "cooldownSeconds": 300,
+  "cooldownSeconds": 120,
   "embed": {
     "title": "🧪 When’s the Mint?",
     "color": 16749079,
-    "description": "⛏️ **Mint is coming soon but the date is not set yet !** — Used the `/mint` command to know more about it.\n\nStay active, help the community, and climb the Bandit ranks to increase your chances of getting a last minute whitelist.\n\n> _“A true Bandit prepares before the heist.”_ – Wise Gangster"
+    "description": "⛏️ **Mint is coming on friday at 12PM UTC !** — Used the `/mint` command to know more about your whitelists.\n\nThe website where the mint will took place is https://monadbandit.xyz .\n\n> _“A true Bandit prepares before the heist.”_ – Wise Gangster"
   }
 }
