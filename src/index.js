@@ -11,6 +11,7 @@ registerCommands(client);
 +require('./cron/rotatePublication');
 +require('./cron/checkMuleEligibility');
 +require('./cron/whitelistNftSync');
++require('./cron/genesisRoleSync');
 
 // Chargement des events (ready, interaction, etc.)
 registerEvents(client);

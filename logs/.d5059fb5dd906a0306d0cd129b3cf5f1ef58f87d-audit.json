@@ -6,9 +6,14 @@
     "auditLog": "logs\\.d5059fb5dd906a0306d0cd129b3cf5f1ef58f87d-audit.json",
     "files": [
         {
-            "date": 1745187047792,
-            "name": "logs\\bandit-bot-2025‑04‑21.log",
-            "hash": "d6597f8438cc12ece0f629e72f8ddcf50e2289caa000ffd5d3a740fec7dc8974"
+            "date": 1748015594167,
+            "name": "logs\\bandit-bot-2025‑05‑23.log",
+            "hash": "8b54a137100d7a2b5df7f261205ade3027f2a2af697625db891aac47f24e8f87"
+        },
+        {
+            "date": 1748037600730,
+            "name": "logs\\bandit-bot-2025‑05‑24.log",
+            "hash": "16a6066a2ceea4d993a6c46832566672071e17019148cabbecae46776e4df9a4"
         }
     ],
     "hashType": "sha256"

@@ -1,10 +1,43 @@
 const cron = require('node-cron');
+const { ethers } = require('ethers');
 const client = require('../config/client');
 const UserLink = require('../services/models/UserLink');
 const Whitelist = require('../services/models/Whitelist');
 
-cron.schedule('*/10 * * * *', async () => {
+// --- Blockchain set‑up --------------------------------------------------
+const RPC_URL          = process.env.MONAD_RPC_URL;
+const GENESIS_ADDRESS  = process.env.NFT_GENESIS_CONTRACT;
+const provider         = new ethers.JsonRpcProvider(RPC_URL);
+const abi = [
+  'function nextTokenId() view returns (uint256)',
+  'function ownerOf(uint256 tokenId) view returns (address)'
+];
+const contract = new ethers.Contract(GENESIS_ADDRESS, abi, provider);
+
+// Helper to count unique holders (<= 999 tokens → OK for per‑token ownerOf)
+async function countGenesisHolders() {
+  // ethers v6 renvoie un BigInt, v5 un BigNumber
+const rawNextId = await contract.nextTokenId();
+const nextId    = typeof rawNextId === 'bigint' ? Number(rawNextId) : rawNextId.toNumber(); // 1‑based, next unminted
+  const totalMinted = nextId - 1;
+  if (totalMinted <= 0) return 0;
+
+  const BATCH = 25; // RPC calls in parallel
+  const owners = new Set();
+
+  for (let i = 1; i <= totalMinted; i += BATCH) {
+    const ids = Array.from({ length: Math.min(BATCH, totalMinted - i + 1) }, (_, k) => i + k);
+    const batchOwners = await Promise.allSettled(ids.map(id => contract.ownerOf(id)));
+    batchOwners.forEach(r => {
+      if (r.status === 'fulfilled') owners.add(r.value.toLowerCase());
+    });
+  }
+  return owners.size;
+}
+
+cron.schedule('*/10 * * * *', async () => { 
   try {
+    console.log(`🕓 Updating stat channels...`);
     const guild = await client.guilds.fetch(process.env.GUILD_ID);
 
     // 🔢 Total members
@@ -14,27 +47,24 @@ cron.schedule('*/10 * * * *', async () => {
     const members = await guild.members.fetch();
     const errandCount = members.filter(m => m.roles.cache.has(process.env.ROLE_ERRAND_ID)).size;
 
-    // 🧾 Wallets in Mongo
+    // 🔐 Wallets in Mongo
     const walletCount = await UserLink.countDocuments();
 
-    // 🏷️ Whitelists in Mongo
-    const all = await Whitelist.find({});
-          const staff = all.reduce((sum, r) => sum + r.whitelistsGiven, 0);
-          const nfts = all.reduce((sum, r) => sum + r.whitelistsNFTs, 0);
-          const whitelistCount = staff + nfts;
+    // 🏷️ Holders of NFT (on‑chain)
+    const holdersCount = await countGenesisHolders();
 
     // 🎯 Update each channel
-    const channelTotal = await guild.channels.fetch(process.env.CHANNEL_TOTAL_ID);
+    const channelTotal    = await guild.channels.fetch(process.env.CHANNEL_TOTAL_ID);
     const channelVerified = await guild.channels.fetch(process.env.CHANNEL_VERIFIED_ID);
-    const channelWallets = await guild.channels.fetch(process.env.CHANNEL_WALLETS_ID);
-    const channelWhitelists = await guild.channels.fetch(process.env.CHANNEL_WHITELISTS_ID);
+    const channelWallets  = await guild.channels.fetch(process.env.CHANNEL_WALLETS_ID);
+    const channelHolders  = await guild.channels.fetch(process.env.CHANNEL_HOLDERS_ID);
 
     await channelTotal.setName(`👥 Total Members | ${totalCount}`);
     await channelVerified.setName(`✅ Verified Members | ${errandCount}`);
     await channelWallets.setName(`🔐 Verified Wallets | ${walletCount}`);
-    await channelWhitelists.setName(`🎫 Whitelists granted | ${whitelistCount}`);
+    await channelHolders.setName(`🥷 Genesis Holders | ${holdersCount}`);
 
-    console.log(`✅ Stats updated: ${totalCount} total, ${errandCount} verified, ${walletCount} wallets, ${whitelistCount} whitelists`);
+    console.log(`✅ Stats updated: ${totalCount} total, ${errandCount} verified, ${walletCount} wallets, ${holdersCount} holders`);
   } catch (err) {
     console.error('❌ Failed to update stat channels:', err);
   }
