@@ -1,93 +1,72 @@
+// src/commands/sync.js – version simplifiée (plus de partenaires/whitelists)
 const { SlashCommandBuilder } = require('discord.js');
-const { getWalletByDiscordId, getUserLink } = require('../services/userLinkService');
-const { checkAllPartners } = require('../services/partnerService');
-const Whitelist = require('../services/models/Whitelist');
+const { ethers } = require('ethers');
+const { getWalletByDiscordId } = require('../services/userLinkService');
+const NFTHolding  = require('../services/models/NFTHolding');
 const { createEmbed } = require('../utils/createEmbed');
-const { roles: roleWeights, registrationMultipliers } = require('../config/giveawayWeights');
+const { roles: roleWeights } = require('../config/giveawayWeights');
+
+// ENV
+const GENESIS_CONTRACT = process.env.NFT_GENESIS_CONTRACT;
+const GENESIS_ROLE_ID  = process.env.ROLE_GENESIS_ID;
+const RPC_URL          = process.env.MONAD_RPC_URL;
+const provider         = new ethers.JsonRpcProvider(RPC_URL);
+const erc721Abi        = [ 'function balanceOf(address) view returns (uint256)' ];
+const contract         = new ethers.Contract(GENESIS_CONTRACT, erc721Abi, provider);
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('sync')
-    .setDescription('Sync partner-NFT holdings and whitelist stats'),
+    .setDescription('Sync your Genesis holdings & role'),
 
   async execute(interaction) {
-    // Wallet check
+    // 1. Wallet linked ?
     const wallet = await getWalletByDiscordId(interaction.user.id);
     if (!wallet) {
-      return interaction.reply({
-        embeds: [createEmbed({
-          title: '❌ No Wallet Linked',
-          description: 'Use `/savewallet` to link a wallet first.',
-          interaction
-        })],
-        flags: 64
-      });
+      return interaction.reply({ embeds:[createEmbed({
+        title:'❌ No Wallet Linked',
+        description:'Use `/savewallet` to link a wallet first.',
+        interaction })], ephemeral:true });
     }
 
-    await interaction.deferReply({ flags: 64 });
+    await interaction.deferReply({ ephemeral:true });
 
-    // Partner NFTs
-    const partnerCounts = await checkAllPartners(wallet);
-    const eligibleNFTs = Object.values(partnerCounts).reduce((a, b) => a + b, 0);
+    // 2. On‑chain Genesis balance
+    let nftCount = 0;
+    try {
+      const bal = await contract.balanceOf(wallet);
+      nftCount  = typeof bal === 'bigint' ? Number(bal) : bal.toNumber();
+    } catch (e) {
+      console.warn('Genesis balance error:', e.message);
+    }
 
-    // Update whitelist NFT count
-    let wlRec = await Whitelist.findOne({ discordId: interaction.user.id }) ??
-                await Whitelist.create({ discordId: interaction.user.id });
-    wlRec.whitelistsNFTs = eligibleNFTs;
-    await wlRec.save();
-
-    // Format NFTs detected
-    const partnerLines = Object.entries(partnerCounts)
-      .map(([name, cnt]) => `• **${name}**: ${cnt}`)
-      .join('\n') || '_No partner NFTs detected_';
-
-    // Registration info
-    const link = await getUserLink(interaction.user.id);
-    const regNumber = link?.registrationNumber ?? '–';
-
-    // Discord role weight
+    // 3. Role update
     const member = await interaction.guild.members.fetch(interaction.user.id);
-    let roleMultiplier = 1.0;
-    for (const [roleId, weight] of Object.entries(roleWeights)) {
-      if (member.roles.cache.has(roleId)) {
-        roleMultiplier = Math.max(roleMultiplier, weight);
-      }
+    const hasRole = member.roles.cache.has(GENESIS_ROLE_ID);
+    if (nftCount > 0 && !hasRole) await member.roles.add(GENESIS_ROLE_ID, 'Owns Genesis');
+    if (nftCount === 0 && hasRole) await member.roles.remove(GENESIS_ROLE_ID, 'No Genesis');
+
+    // 4. Tickets calculation
+    let roleMultiplier = 1;
+    for (const [rid, w] of Object.entries(roleWeights)) {
+      if (member.roles.cache.has(rid)) roleMultiplier = Math.max(roleMultiplier, w);
     }
+    const tickets = nftCount * 100 * roleMultiplier;
 
-    // Bonus multiplier based on registration number (earlier users get better odds)
-    let regMultiplier = 1.0;
-    if (typeof regNumber === 'number') {
-      for (const { min, max, weight } of registrationMultipliers) {
-        if (regNumber >= min && regNumber <= max) {
-          regMultiplier = weight;
-          break;
-        }
-      }
-    }
+    // 5. Persist snapshot (optional)
+    await NFTHolding.findOneAndUpdate(
+      { discordId:interaction.user.id },
+      { genesis:nftCount, updatedAt:new Date() },
+      { upsert:true }
+    );
 
-    const finalChances = Math.round(roleMultiplier * regMultiplier * 100);
+    // 6. Embed
+    const description = [
+      `🔗 **Wallet:** \`${wallet}\``,
+      `🥷 **Genesis NFTs:** **${nftCount}**`,
+      `🎫 **Tickets:** **${tickets}** (100 × NFTs × role multiplier)`
+    ].join('\n');
 
-    // Build embed
-    const totalWL = wlRec.whitelistsNFTs + wlRec.whitelistsGiven;
-    const description = `
-🔗 **Registered wallet:** \`${wallet}\`
-🔢 **Registration number:** #${regNumber}
-
-NFTs detected:
-${partnerLines}
-NFTs eligible for whitelist: **${eligibleNFTs}**
-> Selling eligible NFTs removes those whitelist slots.
-
-🎰 **Giveaway chances:** **${finalChances} tickets**
-🎫 **Total whitelists:** **${totalWL}**
-`.trim();
-
-    await interaction.editReply({
-      embeds: [createEmbed({
-        title: '🔍 Sync Complete',
-        description,
-        interaction
-      })]
-    });
+    await interaction.editReply({ embeds:[createEmbed({ title:'🔄 Sync Complete', description, interaction })] });
   }
 };
