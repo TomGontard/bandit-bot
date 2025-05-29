@@ -7,6 +7,8 @@ async function createOrUpdateUserLink(discordId, wallet) {
   // ➕ si user existe déjà, update seulement le wallet
   if (existing) {
     existing.wallet = wallet;
+    existing.verified = false; // Reset verification status on update
+    existing.verifiedAt = null; // Reset verification date on update
     return await existing.save();
   }
 
@@ -29,6 +31,14 @@ async function isWalletLinked(wallet) {
 
 async function getUserLink(discordId) {
   return await UserLink.findOne({ discordId });
+}
+
+async function verifyUser(discordId) {
+  return UserLink.findOneAndUpdate(
+    { discordId },
+    { verified: true, verifiedAt: new Date() },
+    { new: true }
+  );
 }
 
 module.exports = {
