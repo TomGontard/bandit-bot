@@ -1,5 +1,5 @@
 // src/services/mongo.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const connectToMongoDB = async () => {
   try {
@@ -14,4 +14,4 @@ const connectToMongoDB = async () => {
   }
 };
 
-module.exports = connectToMongoDB;
+export default connectToMongoDB;

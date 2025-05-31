@@ -1,7 +1,7 @@
 // src/utils/twitterButtons.js
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-function buildTwitterButtons(tweetId) {
+export function buildTwitterButtons(tweetId) {
   const base = `https://twitter.com/intent`;
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -23,5 +23,3 @@ function buildTwitterButtons(tweetId) {
       .setURL(`${base}/tweet?in_reply_to=${tweetId}`)
   );
 }
-
-module.exports = { buildTwitterButtons };

@@ -1,5 +1,5 @@
 // src/config/collections.js
-require('dotenv').config();
+import 'dotenv/config';
 
 const partners = [];
 
@@ -22,7 +22,7 @@ if (process.env.NFT_BANDIT_CONTRACTS) {
         name: `Bandit #${i + 1}`,
         address: addr.trim(),
         category: 'bandit',
-      }),
+      })
     );
 }
 
@@ -46,4 +46,4 @@ const roleIds = {
   bandit: process.env.ROLE_BANDIT_ID,
 };
 
-module.exports = { partners, roleIds };
+export { partners, roleIds };

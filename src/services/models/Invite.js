@@ -1,5 +1,5 @@
 // src/services/models/Invite.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 /**
  * One document per inviter.
@@ -10,7 +10,7 @@ const InviteSchema = new mongoose.Schema(
     inviterId:  { type: String, required: true, unique: true },
     invitedIds: { type: [String], default: [] },   // unique array
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-module.exports = mongoose.model('Invite', InviteSchema);
+export default mongoose.model('Invite', InviteSchema);

@@ -5,11 +5,11 @@
 //  • Same eligibility & weighting rules as /giveaway
 //  • Posts winners in #announcements with an @Errand ping
 // ──────────────────────────────────────────────────────────────
-const cron           = require('node-cron');
-const client         = require('../config/client');
-const UserLink       = require('../services/models/UserLink');
-const Whitelist      = require('../services/models/Whitelist');
-const { createEmbed }= require('../utils/createEmbed');
+import cron from 'node-cron';
+import client from '../config/client.js';
+import UserLink from '../services/models/UserLink.js';
+import Whitelist from '../services/models/Whitelist.js';
+import { createEmbed } from '../utils/createEmbed.js';
 
 // ───── configuration via ENV ─────
 const CRON_EXPR   = process.env.GIVEAWAY_CRON; 

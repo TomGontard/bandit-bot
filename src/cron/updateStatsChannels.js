@@ -1,6 +1,6 @@
-const cron = require('node-cron');
-const client = require('../config/client');
-const UserLink = require('../services/models/UserLink');
+import cron from 'node-cron';
+import client from '../config/client.js';
+import UserLink from '../services/models/UserLink.js';
 
 cron.schedule('*/10 * * * *', async () => {
   try {
