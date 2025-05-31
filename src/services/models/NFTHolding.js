@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+// src/services/models/NFTHolding.js
+import mongoose from 'mongoose';
 
 const HoldingSchema = new mongoose.Schema({
   discordId: { type: String, required: true, unique: true },
@@ -10,4 +11,4 @@ const HoldingSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('NFTHolding', HoldingSchema);
+export default mongoose.model('NFTHolding', HoldingSchema);

@@ -1,19 +1,20 @@
 // src/services/nftChecker.js
-const { ethers } = require('ethers');
-const { partners } = require('../config/collections');
-const provider = new ethers.JsonRpcProvider(process.env.MONAD_RPC_URL);
+import { JsonRpcProvider, Contract } from 'ethers';
+import { partners } from '../config/collections.js';
+
+const provider = new JsonRpcProvider(process.env.MONAD_RPC_URL);
 
 const ERC721_ABI = ['function balanceOf(address) view returns (uint256)'];
 
-async function fetchBalances(wallet) {
+export async function fetchBalances(wallet) {
   const counts = {};
 
   for (const col of partners) {
-    const contract = new ethers.Contract(col.address, ERC721_ABI, provider);
+    const contract = new Contract(col.address, ERC721_ABI, provider);
     try {
       const bal = await contract.balanceOf(wallet);      // bigint ou BigNumber
-      const n   = typeof bal === 'bigint' ? Number(bal)  // v6
-                  : bal.toNumber();                      // v5
+      const n   = typeof bal === 'bigint' ? Number(bal)   // v6
+                  : bal.toNumber();                       // v5
       counts[col.address] = n;
     } catch (e) {
       console.error(`NFT check error for ${col.name}`, e);
@@ -23,14 +24,12 @@ async function fetchBalances(wallet) {
   return counts;
 }
 
-function aggregate(counts) {
+export function aggregate(counts) {
   let genesis = 0, bandit = 0;
   for (const { address, category } of partners) {
     const c = counts[address] || 0;
     if (category === 'genesis') genesis += c;
-    if (category === 'bandit')  bandit  += c;
+    if (category === 'bandit') bandit  += c;
   }
   return { genesis, bandit };
 }
-
-module.exports = { fetchBalances, aggregate };
