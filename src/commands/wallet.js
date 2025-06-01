@@ -16,22 +16,26 @@ export async function execute(interaction) {
   // 0. Y a-t-il déjà un wallet de lié ?
   const link = await getUserLink(interaction.user.id);
   if (!link) {
-    // réutilise l’onboarding “/walletmessage”
+    // Si pas de lien, on délègue à /walletmessage sans deferReply ici
     const walletMsgCmd = interaction.client.commands.get('walletmessage');
     return walletMsgCmd.execute(interaction);
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  // 1. On ne deferReply qu’une seule fois
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
+
   const guildMember = await interaction.guild.members.fetch(interaction.user.id);
 
   // 🔎 Vérifie si l'utilisateur booste le serveur
-    const isBooster = guildMember.roles.cache.has(process.env.ROLE_BOOSTER_ID);
+  const isBooster = guildMember.roles.cache.has(process.env.ROLE_BOOSTER_ID);
 
-    const guild = await interaction.guild.fetch();
-    // 📬 Récupère le nombre de personnes invitées
-    const invitedCount = await getInvitedCount(interaction.user.id, guild);
+  const guild = await interaction.guild.fetch();
+  // 📬 Récupère le nombre de personnes invitées
+  const invitedCount = await getInvitedCount(interaction.user.id, guild);
 
-  // 1. Récupère le nombre de Genesis Pass on-chain
+  // 2. Récupère le nombre de Genesis Pass on-chain
   let genesisCount;
   try {
     genesisCount = await getGenesisCount(link.wallet);
@@ -40,13 +44,12 @@ export async function execute(interaction) {
       return interaction.editReply({
         content:
           '⚠️ Impossible de contacter le RPC pour vérifier le Genesis Pass. Merci de réessayer dans quelques instants.',
-        ephemeral: true,
       });
     }
     throw e;
   }
 
-  // synchronisation du rôle Genesis
+  // 3. Synchronisation du rôle Genesis
   const hasGenesisRole = guildMember.roles.cache.has(process.env.ROLE_GENESIS_ID);
   if (genesisCount > 0 && !hasGenesisRole) {
     await guildMember.roles.add(process.env.ROLE_GENESIS_ID, 'Owns Genesis Pass');
@@ -55,39 +58,39 @@ export async function execute(interaction) {
     await guildMember.roles.remove(process.env.ROLE_GENESIS_ID, 'No Genesis Pass');
   }
 
-  // 2. Calcule le multiplicateur de rôle le plus élevé
+  // 4. Calcule le multiplicateur de rôle le plus élevé
   const roleMult = Object.entries(giveawayWeights.roles).reduce(
-    (best, [id, w]) => (guildMember.roles.cache.has(id) ? Math.max(best, w) : best),
+    (best, [id, w]) =>
+      guildMember.roles.cache.has(id) ? Math.max(best, w) : best,
     1
   );
 
-  // 3. Comptabilise les NFTs partenaires (futur usage)
+  // 5. Comptabilise les NFTs partenaires (futur usage)
   const partnerCounts = await checkAllPartners(link.wallet);
   const wlNFTs = Object.values(partnerCounts).reduce((a, b) => a + b, 0);
 
-  // met à jour la collection Whitelist
+  // 6. Met à jour la collection Whitelist
   await Whitelist.findOneAndUpdate(
     { discordId: interaction.user.id },
     { whitelistsNFTs: wlNFTs },
     { upsert: true }
   );
 
-  // 4. Calcule les tickets
+  // 7. Calcule les tickets
   const baseTickets = genesisCount * 100;
   const tickets = link.verified ? Math.round(baseTickets * roleMult) : baseTickets;
 
-  // 5. Autres holdings (Bandit NFT, Soon…)
+  // 8. Autres holdings (Bandit NFT, Soon…)
   const banditHeld = 0;
-    const soonHeld = 0;
-    
-    // Attribue le rôle Mule si conditions réunies
-    const hasMuleRole = guildMember.roles.cache.has(process.env.ROLE_MULE_ID);
-    if (link.verified && (invitedCount >= 3 || isBooster) && !hasMuleRole) {
-        await guildMember.roles.add(process.env.ROLE_MULE_ID, 'Eligible for Mule role');
-    }
+  const soonHeld = 0;
 
+  // 9. Attribue le rôle Mule si conditions réunies
+  const hasMuleRole = guildMember.roles.cache.has(process.env.ROLE_MULE_ID);
+  if (link.verified && (invitedCount >= 3 || isBooster) && !hasMuleRole) {
+    await guildMember.roles.add(process.env.ROLE_MULE_ID, 'Eligible for Mule role');
+  }
 
-  // 6. Construit l’embed et les boutons
+  // 10. Construit l’embed et les boutons
   const { embed, buttons } = buildProfile({
     member: guildMember,
     link,
@@ -95,15 +98,10 @@ export async function execute(interaction) {
     genesisCount,
     tickets,
     banditHeld,
-      soonHeld,
-      invitedCount,
+    soonHeld,
+    invitedCount,
     isBooster,
   });
 
-  await interaction.editReply({ embeds: [embed], components: [buttons] });
-}
-
-// util interne (optionnel si jamais besoin ailleurs)
-function verified(link) {
-  return !!link?.verified;
+  return interaction.editReply({ embeds: [embed], components: [buttons] });
 }
