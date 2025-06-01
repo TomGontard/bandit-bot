@@ -14,6 +14,16 @@
             "date": 1748037600730,
             "name": "logs\\bandit-bot-2025‑05‑24.log",
             "hash": "16a6066a2ceea4d993a6c46832566672071e17019148cabbecae46776e4df9a4"
+        },
+        {
+            "date": 1748287439411,
+            "name": "logs\\bandit-bot-2025‑05‑26.log",
+            "hash": "9d18c6a52603f0a9225f2293c0d4a0b79c9a93e1a02ed079ff87be3be99e663c"
+        },
+        {
+            "date": 1748296800818,
+            "name": "logs\\bandit-bot-2025‑05‑27.log",
+            "hash": "ccc8ba58447708a37d972275f1a4405b86fd9851234dcd7d295353abd9642832"
         }
     ],
     "hashType": "sha256"

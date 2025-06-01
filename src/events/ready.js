@@ -1,7 +1,7 @@
 // src/events/ready.js
-const { saveInviteSnapshot, loadCachedInvites } = require('../utils/inviteUtils');
+import { saveInviteSnapshot, loadCachedInvites } from '../utils/inviteUtils.js';
 
-module.exports = {
+export default {
   name: 'ready',
   once: true,
   async execute(client) {
@@ -21,7 +21,6 @@ module.exports = {
       // 💾 Backup to DB
       await saveInviteSnapshot(guild);
       console.log('📦 Invite cache loaded and snapshot saved from Discord');
-
     } catch (err) {
       console.warn('⚠️ Failed to fetch invites from Discord. Falling back to DB…');
 
@@ -33,5 +32,5 @@ module.exports = {
     }
 
     console.log(`✅ Logged in as ${client.user.tag}`);
-  }
+  },
 };

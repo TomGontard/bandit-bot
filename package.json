@@ -2,6 +2,7 @@
   "name": "bandit-bot",
   "version": "1.0.0",
   "main": "index.js",
+  "type":"module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "deploy": "node deploy-commands.js",
@@ -20,6 +21,7 @@
   "homepage": "https://github.com/TomGontard/bandit-bot#readme",
   "description": "",
   "dependencies": {
+    "@envio-dev/hypersync-client": "^0.6.5",
     "axios": "^1.8.4",
     "discord.js": "^14.18.0",
     "dotenv": "^16.5.0",

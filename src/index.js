@@ -1,24 +1,30 @@
 // src/index.js
-require('dotenv').config();
-require('events').defaultMaxListeners = 20;
-const client = require('./config/client');
-const registerEvents = require('./events');
-const registerCommands = require('./commands');
-const connectToMongoDB = require('./services/mongo');
-registerCommands(client);
-+require('./cron/scheduler');
-+require('./cron/updateStatsChannels');
-+require('./cron/rotatePublication');
-+require('./cron/checkMuleEligibility');
-+require('./cron/whitelistNftSync');
-+require('./cron/genesisRoleSync');
 
-// Chargement des events (ready, interaction, etc.)
+// 1️⃣ Chargement de dotenv
+import 'dotenv/config';
+
+// 2️⃣ Augmentation du nombre maximal d’écouteurs d’événements
+import { EventEmitter } from 'events';
+EventEmitter.defaultMaxListeners = 20;
+
+// 3️⃣ Import des modules principaux (ajoute .js aux chemins relatifs)
+import client from './config/client.js';
+import registerEvents from './events/index.js';
+import registerCommands from './commands/index.js';
+import connectToMongoDB from './services/mongo.js';
+
+// 4️⃣ Chargement des tâches cron (on exécute simplement ces modules)
+import './cron/scheduler.js';
+import './cron/updateStatsChannels.js';
+import './cron/rotatePublication.js';
+import './cron/checkMuleEligibility.js';
+
+// 5️⃣ Enregistrement des commandes et des events
+registerCommands(client);
 registerEvents(client);
-registerCommands(client);
 
-// Connexion du bot
+// 6️⃣ Connexion du bot Discord
 client.login(process.env.DISCORD_TOKEN);
 
-// Connexion à la base de données MongoDB
+// 7️⃣ Connexion à la base MongoDB
 connectToMongoDB();

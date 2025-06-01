@@ -1,7 +1,12 @@
 // scripts/grantEarlyGang.js
 require('dotenv').config();
+<<<<<<< HEAD
 const mongoose = require('mongoose');
 const client = require('../src/config/client');
+=======
+const client = require('../src/config/client');
+const mongoose = require('mongoose');
+>>>>>>> develop
 const UserLink = require('../src/services/models/UserLink');
 
 (async () => {

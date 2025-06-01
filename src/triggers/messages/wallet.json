@@ -6,6 +6,6 @@
   "embed": {
     "title": "🔐 Link your wallet. Claim your identity.",
     "color": 16749079,
-    "description": "Your wallet is your Bandit ID.\nUse `/savewallet` to link it.\n\nCheck the full guide in <#1364371354295599164>\n\n> _“No wallet, no street cred.”_"
+    "description": "Your wallet is your Bandit ID.\nUse `/wallet` to link it.\n\nCheck the full guide in <#1364371354295599164>\n\n> _“No wallet, no street cred.”_"
   }
 }

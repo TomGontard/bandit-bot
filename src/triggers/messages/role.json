@@ -1,7 +1,7 @@
 {
   "trigger": "role",
   "ignoreAdmins": true,
-  "active": true,
+  "active": false,
   "cooldownSeconds": 300,
   "embed": {
     "title": "🧠 Want a role? Earn it like a Bandit.",

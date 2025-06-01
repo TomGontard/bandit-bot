@@ -1,9 +1,9 @@
-/* src/utils/logger.js */
-const { createLogger, format, transports } = require('winston');
-require('winston-daily-rotate-file');
-const { EmbedBuilder, Colors } = require('discord.js');
-const client = require('../config/client');
-require('dotenv').config(); // pour lire le .env
+// src/utils/logger.js
+import 'dotenv/config'; // pour lire le .env
+import { createLogger, format, transports } from 'winston';
+import 'winston-daily-rotate-file';
+import { EmbedBuilder, Colors } from 'discord.js';
+import client from '../config/client.js';
 
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // à définir dans .env
 
@@ -11,18 +11,18 @@ const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID; // à définir dans .env
 const logger = createLogger({
   level: 'info',
   format: format.combine(
-    format.timestamp({ format: 'YYYY‑MM‑DD HH:mm:ss' }),
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     format.errors({ stack: true }),
     format.printf(({ timestamp, level, message }) =>
-      `${timestamp} ${level.toUpperCase()} – ${message}`,
-    ),
+      `${timestamp} ${level.toUpperCase()} – ${message}`
+    )
   ),
   transports: [
     new transports.Console({ format: format.colorize({ all: true }) }),
     new transports.DailyRotateFile({
       dirname: 'logs',
       filename: 'bandit-bot-%DATE%.log',
-      datePattern: 'YYYY‑MM‑DD',
+      datePattern: 'YYYY-MM-DD',
       maxFiles: '7d',
       zippedArchive: false,
     }),
@@ -51,27 +51,30 @@ async function pushDiscord(level, message, meta) {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(level === 'error' ? Colors.Red
-              : level === 'warn'  ? Colors.Yellow
-              : Colors.Blurple)
+      .setColor(
+        level === 'error' ? Colors.Red :
+        level === 'warn'  ? Colors.Yellow :
+                            Colors.Blurple
+      )
       .setDescription(message.slice(0, 4000))
       .setTimestamp();
 
     if (meta?.stack) {
-      embed.addFields({ name: 'Stack', value: `\`\`\`${meta.stack.slice(0, 1000)}\`\`\`` });
+      embed.addFields({
+        name: 'Stack',
+        value: `\`\`\`${meta.stack.slice(0, 1000)}\`\`\``
+      });
     }
 
     await channel.send({ embeds: [embed] });
-
   } catch (e) {
     console.warn('[Logger] ERREUR lors de l’envoi Discord ❌', e.message);
   }
 }
 
-
 /* ─── Routes Discord pour info|warn|error ─── */
 /* ─── Patch : chaque appel logger.<lvl>() pousse aussi sur Discord ─── */
-['info', 'warn', 'error'].forEach(lvl => {
+['info', 'warn', 'error'].forEach((lvl) => {
   const orig = logger[lvl].bind(logger);
   logger[lvl] = (...args) => {
     // 1) journalise normalement (console + fichier)
@@ -84,6 +87,4 @@ async function pushDiscord(level, message, meta) {
   };
 });
 
-
-
-module.exports = logger;
+export default logger;

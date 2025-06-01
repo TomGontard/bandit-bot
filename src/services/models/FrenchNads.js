@@ -1,10 +1,11 @@
 // src/services/models/frenchnads.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const FrenchNadsSchema = new mongoose.Schema({
-    discordId: { type: String, required: true, unique: true },
-    discordName: { type: String, required: true},
-    discordUsername: { type: String, required: true},
+  discordId:      { type: String, required: true, unique: true },
+  discordName:    { type: String, required: true },
+  discordUsername:{ type: String, required: true },
 });
 
-module.exports = mongoose.model('FrenchNads', FrenchNadsSchema);
+export default mongoose.model('FrenchNads', FrenchNadsSchema);
+ 

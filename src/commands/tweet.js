@@ -1,10 +1,5 @@
 // src/commands/tweet.js
-// ──────────────────────────────────────────────────────────────
-//  /tweet get                 → fetch latest tweet ID, store, preview
-//  /tweet post                → post the stored tweet (needs /confirm)
-//  /tweet post <id>           → post the given tweet ID (needs /confirm)
-// ──────────────────────────────────────────────────────────────
-const {
+import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   ActionRowBuilder,
@@ -12,17 +7,17 @@ const {
   ButtonStyle,
   ComponentType,
   MessageFlags,
-} = require('discord.js');
+} from 'discord.js';
+import { TwitterApi } from 'twitter-api-v2';
+import { buildTwitterButtons } from '../utils/twitterButtons.js';
+import { createEmbed } from '../utils/createEmbed.js';
+import TweetState from '../services/models/TweetState.js';
 
-const { TwitterApi } = require('twitter-api-v2');
-const { buildTwitterButtons } = require('../utils/twitterButtons');
-const { createEmbed } = require('../utils/createEmbed');
-const TweetState = require('../services/models/TweetState');   // simple { lastId }
-const twitter     = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
+const twitter = new TwitterApi(process.env.TWITTER_BEARER_TOKEN);
 
 // ───── helper ─────
 function safeRespond(interaction, action) {
-  return action().catch(err => {
+  return action().catch((err) => {
     // 10062 = "Unknown interaction" → it simply expired, ignore silently
     if (err?.code === 10062) {
       console.warn('⚠️ Interaction expired – response skipped');
@@ -33,31 +28,28 @@ function safeRespond(interaction, action) {
 }
 
 // ───── command data ─────
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('tweet')
-    .setDescription('Fetch or post the latest tweet')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sub =>
-      sub
-        .setName('get')
-        .setDescription('Fetch & store the latest tweet'))
-    .addSubcommand(sub =>
-      sub
-        .setName('post')
-        .setDescription('Post the stored tweet (or a given ID)')
-        .addStringOption(opt =>
-          opt.setName('id')
-            .setDescription('Specific tweet ID to post')
-            .setRequired(false))),
+export const data = new SlashCommandBuilder()
+  .setName('tweet')
+  .setDescription('Fetch or post the latest tweet')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addSubcommand((sub) =>
+    sub.setName('get').setDescription('Fetch & store the latest tweet')
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName('post')
+      .setDescription('Post the stored tweet (or a given ID)')
+      .addStringOption((opt) =>
+        opt.setName('id').setDescription('Specific tweet ID to post').setRequired(false)
+      )
+  );
 
-  // ───── execute ─────
-  async execute(interaction) {
-    const sub = interaction.options.getSubcommand();
-    if (sub === 'get') return handleGet(interaction);
-    if (sub === 'post') return handlePost(interaction);
-  },
-};
+// ───── execute ─────
+export async function execute(interaction) {
+  const sub = interaction.options.getSubcommand();
+  if (sub === 'get') return handleGet(interaction);
+  if (sub === 'post') return handlePost(interaction);
+}
 
 // ──────────────────────────────────────────────────────────────
 //  /tweet get  – fetch & store latest tweet
@@ -67,7 +59,7 @@ async function handleGet(interaction) {
 
   // fetch latest tweet / retweet from account
   const { data } = await twitter.v2.userByUsername(process.env.TWITTER_HANDLE);
-  const uid      = data.id;
+  const uid = data.id;
   const timeline = await twitter.v2.userTimeline(uid, {
     exclude: 'replies',
     max_results: 5,
@@ -85,10 +77,10 @@ async function handleGet(interaction) {
   await TweetState.findOneAndUpdate(
     {},
     { lastId: tweet.id },
-    { upsert: true, new: true },
+    { upsert: true, new: true }
   );
 
-  const url   = `https://twitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
+  const url = `https://twitter.com/${process.env.TWITTER_HANDLE}/status/${tweet.id}`;
   const embed = createEmbed({
     title: '🐦 Latest Tweet stored',
     description: `[Open tweet](${url})\n\nUse \`/tweet post\` to relay it.`,
@@ -132,31 +124,37 @@ async function handlePost(interaction) {
       .setCustomId('cancel')
       .setLabel('Cancel')
       .setEmoji('❌')
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
   );
 
   await interaction.reply({
-    embeds: [createEmbed({
-      title: '📢 Post this tweet?',
-      description: url,
-      interaction,
-    })],
+    embeds: [
+      createEmbed({
+        title: '📢 Post this tweet?',
+        description: url,
+        interaction,
+      }),
+    ],
     components: [row],
     flags: 64,
   });
 
   // collector for 60 s
-  const msg       = await interaction.fetchReply();
+  const msg = await interaction.fetchReply();
   const collector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
     time: 60_000,
   });
 
-  collector.once('collect', async btnInt => {
+  collector.once('collect', async (btnInt) => {
     if (btnInt.customId === 'cancel') {
       collector.stop();
       return safeRespond(interaction, () =>
-        interaction.editReply({ content: '⏳ Post cancelled (no /confirm).', embeds: [], components: [] })
+        interaction.editReply({
+          content: '⏳ Post cancelled (no /confirm).',
+          embeds: [],
+          components: [],
+        })
       );
     }
 
@@ -171,7 +169,11 @@ async function handlePost(interaction) {
     });
 
     await safeRespond(interaction, () =>
-      interaction.editReply({ content: '✅ Tweet posted.', embeds: [], components: [] })
+      interaction.editReply({
+        content: '✅ Tweet posted.',
+        embeds: [],
+        components: [],
+      })
     );
     collector.stop();
   });
@@ -179,7 +181,11 @@ async function handlePost(interaction) {
   collector.once('end', async (_, reason) => {
     if (reason === 'time') {
       await safeRespond(interaction, () =>
-        interaction.editReply({ content: '⌛ Post cancelled (no Confirm).', embeds: [], components: [] })
+        interaction.editReply({
+          content: '⌛ Post cancelled (no Confirm).',
+          embeds: [],
+          components: [],
+        })
       );
     }
   });

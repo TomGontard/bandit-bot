@@ -1,26 +1,28 @@
 // src/services/holdingService.js
-const NFTHolding = require('./models/NFTHolding');
-const { roleIds } = require('../config/collections');
+import NFTHolding from '../services/models/NFTHolding.js';
+import { roleIds } from '../config/collections.js';
 
-async function saveHolding(discordId, wallet, counts, genesis, bandit) {
+export async function saveHolding(discordId, wallet, counts, genesis, bandit) {
   return NFTHolding.findOneAndUpdate(
     { discordId },
     { wallet, counts, genesis, bandit, updatedAt: new Date() },
-    { upsert: true, new: true },
+    { upsert: true, new: true }
   );
 }
 
-async function syncRoles(member, genesis, bandit) {
+export async function syncRoles(member, genesis, bandit) {
   if (roleIds.genesis) {
-    genesis > 0
-      ? await member.roles.add(roleIds.genesis, 'NFT sync')
-      : await member.roles.remove(roleIds.genesis, 'NFT sync');
+    if (genesis > 0) {
+      await member.roles.add(roleIds.genesis, 'NFT sync');
+    } else {
+      await member.roles.remove(roleIds.genesis, 'NFT sync');
+    }
   }
   if (roleIds.bandit) {
-    bandit > 0
-      ? await member.roles.add(roleIds.bandit, 'NFT sync')
-      : await member.roles.remove(roleIds.bandit, 'NFT sync');
+    if (bandit > 0) {
+      await member.roles.add(roleIds.bandit, 'NFT sync');
+    } else {
+      await member.roles.remove(roleIds.bandit, 'NFT sync');
+    }
   }
 }
-
-module.exports = { saveHolding, syncRoles };

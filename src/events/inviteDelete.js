@@ -1,5 +1,5 @@
 // src/events/inviteDelete.js
-module.exports = {
+export default {
   name: 'inviteDelete',
   async execute(invite) {
     const client = invite.client;
@@ -9,5 +9,5 @@ module.exports = {
     client.cachedInvites = cached;
 
     console.log(`❌ Invite deleted: ${invite.code}`);
-  }
+  },
 };

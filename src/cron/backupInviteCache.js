@@ -1,7 +1,7 @@
 // src/cron/backupInviteCache.js
-const cron = require('node-cron');
-const client = require('../config/client');
-const { saveInviteSnapshot, deleteExpiredInvites } = require('../utils/inviteUtils');
+import cron from 'node-cron';
+import client from '../config/client.js';
+import { saveInviteSnapshot, deleteExpiredInvites } from '../utils/inviteUtils.js';
 
 cron.schedule('*/15 * * * *', async () => {
   try {

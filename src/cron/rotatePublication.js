@@ -1,10 +1,11 @@
 // src/cron/rotatePublication.js
-const fs = require('fs');
-const path = require('path');
-const cron = require('node-cron');
-const client = require('../config/client');
-require('dotenv').config();
-const { createEmbed } = require('../utils/createEmbed');
+import fs from 'fs';
+import path, { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import cron from 'node-cron';
+import client from '../config/client.js';
+import 'dotenv/config';
+import { createEmbed } from '../utils/createEmbed.js';
 
 // ✅ Toggle to enable or disable this job
 const ENABLE_PUBLICATION = true;
@@ -15,31 +16,54 @@ function interpolateEnvVars(text) {
   return text.replace(/{{(.*?)}}/g, (_, key) => process.env[key] || `MISSING_ENV:${key}`);
 }
 
-let messageIndex = 0;
+// Recréation de __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const PUBLICATION_DIR = path.join(__dirname, '../publications');
+// Répertoire contenant les fichiers JSON à publier
+const PUBLICATION_DIR = join(__dirname, '../publications');
 const CRON_EXPR = '0 */2 * * *'; // every 2 hours
 
 cron.schedule(CRON_EXPR, async () => {
   if (!ENABLE_PUBLICATION) return;
 
-  const files = fs.readdirSync(PUBLICATION_DIR).filter(f => f.endsWith('.json'));
+  // Lecture synchronisée des fichiers JSON
+  let files;
+  try {
+    files = fs
+      .readdirSync(PUBLICATION_DIR)
+      .filter((f) => f.endsWith('.json'));
+  } catch (err) {
+    console.error('❌ Impossible de lire le dossier publications :', err);
+    return;
+  }
+
   if (files.length === 0) return;
 
   const file = files[messageIndex % files.length];
   messageIndex++;
 
   try {
-    const data = require(path.join(PUBLICATION_DIR, file));
+    // Charger et parser le JSON manuellement
+    const raw = fs.readFileSync(join(PUBLICATION_DIR, file), 'utf-8');
+    const data = JSON.parse(raw);
 
+    // Résoudre l'ID du canal (supporte préfixe "env:")
     const channelId = data.channelId.startsWith('env:')
-      ? process.env[data.channelId.slice(4)] // remove 'env:'
+      ? process.env[data.channelId.slice(4)]
       : data.channelId;
 
-    if (!channelId) throw new Error(`Invalid or missing channel ID in ${file}`);
+    if (!channelId) {
+      throw new Error(`Invalid or missing channel ID in ${file}`);
+    }
 
+    // Récupérer le canal Discord
     const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.send) {
+      throw new Error(`Channel not found or not text channel: ${channelId}`);
+    }
 
+    // Envoi du message selon le type
     if (data.type === 'text') {
       await channel.send(interpolateEnvVars(data.content));
     } else if (data.type === 'embed') {
@@ -47,10 +71,11 @@ cron.schedule(CRON_EXPR, async () => {
         title: interpolateEnvVars(data.embed.title),
         description: interpolateEnvVars(data.embed.description),
         color: data.embed.color,
-        interaction: { client, guild: channel.guild }
+        interaction: { client, guild: channel.guild },
       });
-
       await channel.send({ embeds: [embed] });
+    } else {
+      console.warn(`⚠️ Type inconnu dans ${file} : ${data.type}`);
     }
 
     console.log(`📢 Published message: ${file}`);
@@ -58,3 +83,6 @@ cron.schedule(CRON_EXPR, async () => {
     console.error(`❌ Failed to publish message (${file}):`, err);
   }
 });
+
+// Index pour faire tourner cycliquement les fichiers
+let messageIndex = 0;

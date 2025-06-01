@@ -2,11 +2,11 @@
 /**
  * Cron • Refresh NFT-based whitelists every 6 h
  */
-const cron       = require('node-cron');
-const partnerSvc = require('../services/partnerService');
-const partnerCfg = require('../config/partnerCollections');
-const UserLink   = require('../services/models/UserLink');
-const Whitelist  = require('../services/models/Whitelist');
+import cron from 'node-cron';
+import { checkAllPartners as partnerSvc } from '../services/partnerService.js';
+import partnerCfg from '../config/partnerCollections.js';
+import UserLink from '../services/models/UserLink.js';
+import Whitelist from '../services/models/Whitelist.js';
 
 const CRON_EXPR = process.env.NFT_WL_CRON || '0 */6 * * *'; // every 6 h
 

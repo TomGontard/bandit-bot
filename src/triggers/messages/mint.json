@@ -1,8 +1,8 @@
 {
   "trigger": ["mint", "wen", "site", "website"],
   "ignoreAdmins": true,
-  "active": true,
-  "cooldownSeconds": 120,
+  "active": false,
+  "cooldownSeconds": 300,
   "embed": {
     "title": "🧪 When’s the Mint?",
     "color": 16749079,

@@ -1,12 +1,14 @@
 // src/services/userLinkService.js
-const UserLink = require('./models/UserLink');
+import UserLink from './models/UserLink.js';
 
-async function createOrUpdateUserLink(discordId, wallet) {
+export async function createOrUpdateUserLink(discordId, wallet) {
   const existing = await UserLink.findOne({ discordId });
 
   // ➕ si user existe déjà, update seulement le wallet
   if (existing) {
     existing.wallet = wallet;
+    existing.verified = false;       // Reset verification status on update
+    existing.verifiedAt = null;      // Reset verification date on update
     return await existing.save();
   }
 
@@ -17,23 +19,24 @@ async function createOrUpdateUserLink(discordId, wallet) {
   return await UserLink.create({ discordId, wallet, registrationNumber });
 }
 
-async function getWalletByDiscordId(discordId) {
+export async function getWalletByDiscordId(discordId) {
   const user = await UserLink.findOne({ discordId });
   return user?.wallet;
 }
 
-async function isWalletLinked(wallet) {
+export async function isWalletLinked(wallet) {
   const user = await UserLink.findOne({ wallet });
   return !!user;
 }
 
-async function getUserLink(discordId) {
+export async function getUserLink(discordId) {
   return await UserLink.findOne({ discordId });
 }
 
-module.exports = {
-  createOrUpdateUserLink,
-  getWalletByDiscordId,
-  isWalletLinked,
-  getUserLink, 
-};
+export async function verifyUser(discordId) {
+  return UserLink.findOneAndUpdate(
+    { discordId },
+    { verified: true, verifiedAt: new Date() },
+    { new: true }
+  );
+}

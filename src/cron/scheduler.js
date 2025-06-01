@@ -1,15 +1,9 @@
 // src/cron/scheduler.js
-const cron     = require('node-cron');
-const UserLink = require('../services/models/UserLink');
-const {
-  fetchBalances,
-  aggregate,
-} = require('../services/nftChecker');
-const {
-  saveHolding,
-  syncRoles,
-} = require('../services/holdingService');
-const client   = require('../config/client');
+import cron from 'node-cron';
+import UserLink from '../services/models/UserLink.js';
+import { fetchBalances, aggregate } from '../services/nftChecker.js';
+import { saveHolding, syncRoles } from '../services/holdingService.js';
+import client from '../config/client.js';
 
 // ⏰ 05:00 AM UTC every day (can be configured via .env)
 const CRON_EXPR = process.env.NFT_CRON || '0 5 * * *';
