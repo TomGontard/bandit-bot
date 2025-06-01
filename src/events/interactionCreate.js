@@ -5,19 +5,13 @@ import {
   TextInputStyle,
   ActionRowBuilder,
 } from 'discord.js';
-
 import {
   createOrUpdateUserLink,
   getUserLink,
   verifyUser,
 } from '../services/userLinkService.js';
-
-import {
-  checkSelfTransferEnvio,
-} from '../services/verificationService.js';
-
+import { checkSelfTransferEnvio } from '../services/verificationService.js';
 import withTimeout from '../utils/withTimeout.js';
-import { formatUnits } from 'ethers';
 
 const MODAL_ID = 'wallet_modal';
 const INPUT_ID = 'wallet_input';
@@ -25,11 +19,8 @@ const INPUT_ID = 'wallet_input';
 export default {
   name: 'interactionCreate',
   async execute(interaction, client) {
-    // Si ce n'est pas un bouton, on revient pour traiter slash commands / modals
-    if (!interaction.isButton()) {
-      // ... ton code modal & slash commands ...
-      // (si tu veux gérer d’autres interactions avant les boutons)
-    } else {
+    // ─── Button handling ───────────────────────────────────────
+    if (interaction.isButton()) {
       const id = interaction.customId;
 
       // — Link / Change Wallet
@@ -55,10 +46,11 @@ export default {
         const walletCmd = client.commands.get('wallet');
         if (!walletCmd) {
           return interaction.reply({
-            content: '❌ Wallet command missing.',
+            content: '❌ Wallet command is missing.',
             ephemeral: true,
           });
         }
+        // The /wallet command handles its own deferReply, so call it directly
         return walletCmd.execute(interaction);
       }
 
@@ -67,22 +59,24 @@ export default {
         const link = await getUserLink(interaction.user.id);
         if (!link) {
           return interaction.reply({
-            content: '❌ Aucun wallet lié à ton compte.',
+            content: '❌ No wallet linked to your account.',
             ephemeral: true,
           });
         }
 
         if (link.verified) {
           return interaction.reply({
-            content: '✅ Ton wallet est déjà vérifié !',
+            content: '✅ Your wallet is already verified!',
             ephemeral: true,
           });
         }
 
+        // Defer the reply here
         await interaction.deferReply({ ephemeral: true });
-
+        // Initial status message
         await interaction.editReply({
-          content: '🔍 Je vérifie si tu t’es bien auto-envoyé ≥ 0.1 MON dans les 10 dernières minutes (env. 1200 blocs)…',
+          content:
+            '🔍 Checking if you have self-transferred ≥ 0.1 MON to yourself in the last 10 minutes…',
         });
 
         let verified = false;
@@ -93,8 +87,8 @@ export default {
           return interaction.followUp({
             content:
               e.message === 'TIMEOUT'
-                ? '⏱️ Timeout RPC, réessaie dans une minute.'
-                : '❌ Une erreur est survenue pendant la vérification.',
+                ? '⏱️ RPC timeout. Please try again in a minute.'
+                : '❌ An error occurred during verification.',
             ephemeral: true,
           });
         }
@@ -102,40 +96,43 @@ export default {
         if (verified) {
           await verifyUser(interaction.user.id);
           return interaction.followUp({
-            content: '✅ Bravo, ton wallet a bien été vérifié ! Tu peux relancer `/wallet`.',
+            content:
+              '✅ Congratulations! Your wallet has been verified. You can now re-run `/wallet`.',
             ephemeral: true,
           });
         } else {
           return interaction.followUp({
-            content: '❌ Aucun self-transfer ≥ 0.1 MON détecté récemment. Réessaie après avoir envoyé 0.1 MON à toi-même.',
+            content:
+              '❌ No self-transfer ≥ 0.1 MON detected recently. Please try again after sending 0.1 MON to yourself.',
             ephemeral: true,
           });
         }
       }
 
+      return;
     }
 
-    // ─── Gestion du submit du modal ───────────────────────────────────
+    // ─── Modal submit handling ───────────────────────────────────
     if (interaction.isModalSubmit() && interaction.customId === MODAL_ID) {
-      const address = interaction.fields
-        .getTextInputValue(INPUT_ID)
-        .trim();
+      const address = interaction.fields.getTextInputValue(INPUT_ID).trim();
       if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
         return interaction.reply({
           content: '❌ Invalid address.',
           ephemeral: true,
         });
       }
-      await interaction.deferReply({ ephemeral: true });
+
+      // Do not defer here, as /wallet will defer itself
       await createOrUpdateUserLink(interaction.user.id, address);
       const walletCmd = client.commands.get('wallet');
       return walletCmd.execute(interaction);
     }
 
-    // ─── Slash commands ───────────────────────────────────────────────
+    // ─── Slash commands ──────────────────────────────────────────
     if (!interaction.isChatInputCommand()) return;
     const cmd = client.commands.get(interaction.commandName);
     if (!cmd) return;
+
     try {
       await cmd.execute(interaction);
     } catch (err) {
