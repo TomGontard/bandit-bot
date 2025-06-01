@@ -1,4 +1,4 @@
-// src/utils/walletEmbed.js
+// src/utils/walletProfileEmbed.js
 import {
     ActionRowBuilder,
     ButtonBuilder,
@@ -6,7 +6,6 @@ import {
     EmbedBuilder,
   } from 'discord.js';
   
-  /* hiérarchie “puissance” des rôles côté serveur */
   const POWER_ROLES = [
     process.env.ROLE_BOSS_ID,
     process.env.ROLE_UNDERBOSS_ID,
@@ -15,7 +14,6 @@ import {
     process.env.ROLE_ERRAND_ID,
   ];
   
-  /* construit la ligne « Roles » */
   function buildRolesLine(member, hasGenesis, hasEarly) {
     const arr = [];
   
@@ -28,7 +26,17 @@ import {
   }
   
   export default function walletEmbed(opts) {
-    const { member, link, verified, genesisCount, tickets, banditHeld, soonHeld } = opts;
+    const {
+      member,
+      link,
+      verified,
+      genesisCount,
+      tickets,
+      banditHeld,
+      soonHeld,
+      invitedCount = 0,
+      isBooster = false,
+    } = opts;
   
     const rolesLine = buildRolesLine(
       member,
@@ -40,11 +48,14 @@ import {
       `**Roles :** ${rolesLine}`,
       `**Wallet :** \`${link.wallet}\``,
       '',
-      `**Wallet information :** #${link.registrationNumber ?? '–'}  —  **Verified :** ${verified ? '✅' : '❌'}  —  **Tickets :** ${tickets}`,
+      `**Wallet info :** #${link.registrationNumber ?? '–'}  —  **Verified :** ${verified ? '✅' : '❌'}  —  **Tickets :** ${tickets}`,
       '',
       `**Genesis Pass :** ${genesisCount}`,
       `**Bandit NFT :** ${banditHeld ?? '–'}`,
       `**Soon… :** ${soonHeld ?? '–'}`,
+      '',
+      `**Invited Users :** ${invitedCount}`,
+      `**Server Booster :** ${isBooster ? '✨ Yes' : 'Nope'}`,
     ].join('\n');
   
     const embed = new EmbedBuilder()

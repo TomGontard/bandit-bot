@@ -18,7 +18,6 @@ import './cron/scheduler.js';
 import './cron/updateStatsChannels.js';
 import './cron/rotatePublication.js';
 import './cron/checkMuleEligibility.js';
-import './cron/whitelistNftSync.js';
 
 // 5️⃣ Enregistrement des commandes et des events
 registerCommands(client);

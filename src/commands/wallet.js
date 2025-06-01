@@ -6,6 +6,7 @@ import { checkAllPartners } from '../services/partnerService.js';
 import giveawayWeights from '../config/giveawayWeights.js';
 import buildProfile from '../utils/walletProfileEmbed.js';
 import Whitelist from '../services/models/Whitelist.js';
+import { getInvitedCount } from '../services/inviteService.js';
 
 export const data = new SlashCommandBuilder()
   .setName('wallet')
@@ -22,6 +23,13 @@ export async function execute(interaction) {
 
   await interaction.deferReply({ ephemeral: true });
   const guildMember = await interaction.guild.members.fetch(interaction.user.id);
+
+  // 🔎 Vérifie si l'utilisateur booste le serveur
+    const isBooster = guildMember.roles.cache.has(process.env.ROLE_BOOSTER_ID);
+
+    const guild = await interaction.guild.fetch();
+    // 📬 Récupère le nombre de personnes invitées
+    const invitedCount = await getInvitedCount(interaction.user.id, guild);
 
   // 1. Récupère le nombre de Genesis Pass on-chain
   let genesisCount;
@@ -70,7 +78,14 @@ export async function execute(interaction) {
 
   // 5. Autres holdings (Bandit NFT, Soon…)
   const banditHeld = 0;
-  const soonHeld = 0;
+    const soonHeld = 0;
+    
+    // Attribue le rôle Mule si conditions réunies
+    const hasMuleRole = guildMember.roles.cache.has(process.env.ROLE_MULE_ID);
+    if (link.verified && (invitedCount >= 3 || isBooster) && !hasMuleRole) {
+        await guildMember.roles.add(process.env.ROLE_MULE_ID, 'Eligible for Mule role');
+    }
+
 
   // 6. Construit l’embed et les boutons
   const { embed, buttons } = buildProfile({
@@ -80,7 +95,9 @@ export async function execute(interaction) {
     genesisCount,
     tickets,
     banditHeld,
-    soonHeld,
+      soonHeld,
+      invitedCount,
+    isBooster,
   });
 
   await interaction.editReply({ embeds: [embed], components: [buttons] });
