@@ -1,7 +1,7 @@
 {
   "trigger": ["whitelist", "wl"],
   "ignoreAdmins": true,
-  "active": true,
+  "active": false,
   "cooldownSeconds": 300,
   "embed": {
     "title": "🎫 How do I get whitelists?",

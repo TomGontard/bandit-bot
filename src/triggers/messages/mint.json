@@ -1,7 +1,7 @@
 {
   "trigger": ["mint", "wen"],
   "ignoreAdmins": true,
-  "active": true,
+  "active": false,
   "cooldownSeconds": 300,
   "embed": {
     "title": "🧪 When’s the Mint?",
