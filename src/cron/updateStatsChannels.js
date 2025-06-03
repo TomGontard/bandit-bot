@@ -2,11 +2,11 @@ import cron from 'node-cron';
 import { ethers } from 'ethers';
 import client from '../config/client.js';
 import UserLink from '../services/models/UserLink.js';
+import { getProvider } from '../utils/providerPool.js';
 
 // --- Blockchain set‑up --------------------------------------------------Add commentMore actions
-const RPC_URL          = process.env.MONAD_RPC_URL;
 const GENESIS_ADDRESS  = process.env.NFT_GENESIS_CONTRACT;
-const provider         = new ethers.JsonRpcProvider(RPC_URL);
+const provider         = getProvider();
 const abi = [
   'function nextTokenId() view returns (uint256)',
   'function ownerOf(uint256 tokenId) view returns (address)'
@@ -34,7 +34,7 @@ const nextId    = typeof rawNextId === 'bigint' ? Number(rawNextId) : rawNextId.
   return owners.size;
 }
 
-cron.schedule('*/10 * * * *', async () => {
+cron.schedule('2 * * * *', async () => {
   try {
     console.log(`🕓 Updating stat channels...`);
     const guild = await client.guilds.fetch(process.env.GUILD_ID);

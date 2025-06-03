@@ -12,11 +12,12 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import connectDB from '../services/mongo.js';
 import UserLink from '../services/models/UserLink.js';
 import logger from '../utils/logger.js';
+import { getProvider } from '../utils/providerPool.js';
 
 const GENESIS_CONTRACT = process.env.NFT_GENESIS_CONTRACT;
 const GENESIS_ROLE_ID  = process.env.ROLE_GENESIS_ID;
 const GUILD_ID         = process.env.GUILD_ID;
-const RPC_URL          = process.env.MONAD_RPC_URL_1;
+const provider         = getProvider();
 
 if (!GENESIS_CONTRACT || !GENESIS_ROLE_ID || !GUILD_ID) {
   throw new Error('NFT_GENESIS_CONTRACT, ROLE_GENESIS_ID ou GUILD_ID manquant dans .env');
@@ -27,7 +28,6 @@ const erc721Abi = [
   'function balanceOf(address owner) external view returns (uint256)'
 ];
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
 const genesisContract = new ethers.Contract(GENESIS_CONTRACT, erc721Abi, provider);
 
 // Discord client (no presence intent needed)
@@ -75,7 +75,7 @@ async function syncGenesisRoles() {
 }
 
 // Schedule: at minute 0 of every hour
-cron.schedule('2 * * * *', () => {
+cron.schedule('2 * * * *', () => { 
   syncGenesisRoles().catch(err => logger.error('GenesisRoleSync fatal', err));
 });
 
