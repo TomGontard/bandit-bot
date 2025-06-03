@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 7
+    },
+    "auditLog": "logs\\.07576505df1286a0856d2e3c5f639881806f2fa6-audit.json",
+    "files": [
+        {
+            "date": 1748965056460,
+            "name": "logs\\bandit-bot-2025-06-03.log",
+            "hash": "b9384cd5819377a0e0277d6fb4b6f5bada59b61a935126714c8e2fdc3414cfc2"
+        }
+    ],
+    "hashType": "sha256"
+}

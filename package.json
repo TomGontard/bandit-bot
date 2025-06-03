@@ -2,7 +2,7 @@
   "name": "bandit-bot",
   "version": "1.0.0",
   "main": "index.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "deploy": "node deploy-commands.js",
