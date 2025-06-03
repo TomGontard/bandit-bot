@@ -3,6 +3,6 @@
   "channelId": "env:CHANNEL_GENERAL_ID",
   "embed": {
     "title": "💡 Have ideas or want to collab?",
-    "description": "We love hearing from you!\nSubmit suggestions or partnership requests by opening a ticket in <#{{CHANNEL_COLLABS_ID}}>."
+    "description": "We love hearing from you!\nSubmit suggestions or partnership requests by sending messages in the ."
   }
 }

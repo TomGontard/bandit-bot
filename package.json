@@ -2,7 +2,7 @@
   "name": "bandit-bot",
   "version": "1.0.0",
   "main": "index.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "deploy": "node deploy-commands.js",
@@ -29,7 +29,9 @@
     "mongoose": "^8.13.2",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
-    "twitter-api-v2": "^1.22.0"
+    "twitter-api-v2": "^1.22.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

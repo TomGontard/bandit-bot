@@ -1,18 +1,14 @@
-// src/utils/createEmbed.js
-import { EmbedBuilder } from 'discord.js';
+/* src/utils/commandWrapper.js */
+import logger from './logger.js';
 
-export function createEmbed({ title, description, color = 0xFF7133, footer = true, interaction }) {
-  const embed = new EmbedBuilder()
-    .setColor(color)
-    .setTitle(title)
-    .setDescription(description);
-
-  if (footer && interaction?.guild) {
-    embed.setFooter({
-      text: 'BanditBot • Made by CrypTom',
-      iconURL: interaction.client.user.displayAvatarURL() || undefined
-    });
-  }
-
-  return embed;
+export default function wrapCmd(fn, name) {
+  return async interaction => {
+    try {
+      await fn(interaction);
+      logger.info(`[CMD] /${name} – ${interaction.user.tag}`);
+    } catch (err) {
+      logger.error(`[CMD‑ERR] /${name} – ${err.message}`, err);
+      throw err;
+    }
+  };
 }
