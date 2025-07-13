@@ -1,13 +1,11 @@
-// src/commands/giveaway.js – tickets basés sur le nombre de Genesis NFT
-
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import UserLink from '../services/models/UserLink.js';
 import NFTHolding from '../services/models/NFTHolding.js';
 import Whitelist from '../services/models/Whitelist.js';
+import Player from '../services/models/Player.js';
 import { createEmbed } from '../utils/createEmbed.js';
 import weightsConfig from '../config/giveawayWeights.js';
 
-// helper – pick N unique winners from weighted pool
 function pickWinners(pool, n) {
   const winners = new Set();
   while (winners.size < n && pool.length) {
@@ -19,7 +17,7 @@ function pickWinners(pool, n) {
 
 export const data = new SlashCommandBuilder()
   .setName('giveaway')
-  .setDescription('🎉 Run a weighted raffle or partner giveaway (Genesis-based)')
+  .setDescription('🎉 Run a weighted raffle or partner giveaway (Genesis-based + level bonus)')
   .addIntegerOption(opt =>
     opt.setName('amount')
       .setDescription('How many winners?')
@@ -41,9 +39,7 @@ export async function execute(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const errandRole = guild.roles.cache.get(process.env.ROLE_ERRAND_ID);
-  if (!errandRole) {
-    return interaction.editReply('❌ Errand role not found.');
-  }
+  if (!errandRole) return interaction.editReply('❌ Errand role not found.');
 
   const members = await guild.members.fetch({ withPresences: false });
   const pool = [];
@@ -51,19 +47,26 @@ export async function execute(interaction) {
   for (const member of members.values()) {
     if (!member.roles.cache.has(errandRole.id)) continue;
 
-    const holding = await NFTHolding.findOne({ discordId: member.id });
-    const nftCount = holding?.genesis || 0;
-    if (nftCount === 0) continue;
+    const [holding, player] = await Promise.all([
+      NFTHolding.findOne({ discordId: member.id }),
+      Player.findOne({ discordId: member.id })
+    ]);
 
-    let roleMul = 1;
+    const nftCount = holding?.genesis || 0;
+    const level = player?.level || 1;
+
+    if (nftCount === 0 && level <= 1) continue;
+
+    let roleMult = 1;
     for (const [rid, w] of Object.entries(weightsConfig.roles)) {
-      if (member.roles.cache.has(rid)) {
-        roleMul = Math.max(roleMul, w);
-      }
+      if (member.roles.cache.has(rid)) roleMult = Math.max(roleMult, w);
     }
 
-    const tickets = nftCount * 100 * roleMul;
-    for (let i = 0; i < tickets; i++) pool.push(member.id);
+    const ticketsFromNFTs = nftCount * 100 * roleMult;
+    const ticketsFromLevel = level * 10;
+    const totalTickets = ticketsFromNFTs + ticketsFromLevel;
+
+    for (let i = 0; i < totalTickets; i++) pool.push(member.id);
   }
 
   if (!pool.length) return interaction.editReply('⚠️ No eligible users found.');
@@ -75,31 +78,26 @@ export async function execute(interaction) {
   const winners = pickWinners([...pool], amount);
   if (!winners.length) return interaction.editReply('⚠️ Not enough winners.');
 
-  const annCh = await guild.channels.fetch(process.env.CHANNEL_REWARDS_ID);
+  const [annCh, logCh] = await Promise.all([
+    guild.channels.fetch(process.env.CHANNEL_REWARDS_ID),
+    guild.channels.fetch(process.env.CHANNEL_LOGS_ID)
+  ]);
   const ping = `@everyone`;
 
-  if (partner) {
-    const lines = winners.map((id, i) =>
-      `**${i + 1}.** <@${id}> – ${(countMap[id] / totalTickets * 100).toFixed(2)}% chance - holding ${countMap[id]} tickets`
-    );
-    const embed = createEmbed({
-      title: `<:BANDIT_LOGO:1376648073643688077> Genesis Pass holders Giveaway: ${partner}`,
-      description: [
-        `Total Errands with Genesis: **${participantCount}**`,
-        `Total tickets: **${totalTickets}**`,
-        '',
-        ...lines,
-        '',
-        '> Each Genesis NFT = 100 tickets × role multiplier.'
-      ].join('\n'),
-      interaction
-    });
-    await annCh.send({
-      content: `${ping} Bandit Genesis holders giveaway for **${partner}**!`,
-      embeds: [embed],
-      allowed_mentions: { parse: ['roles'], users: winners }
-    });
-  } else {
+  const winnerWallets = await UserLink.find({
+    discordId: { $in: winners }
+  }, 'wallet discordId');
+
+  const walletMap = new Map(winnerWallets.map(w => [w.discordId, w.wallet]));
+
+  const lines = winners.map((id, i) => {
+    const chance = ((countMap[id] / totalTickets) * 100).toFixed(2);
+    return partner
+      ? `**${i + 1}.** <@${id}> – ${chance}% chance – ${countMap[id]} tickets`
+      : `**${i + 1}.** <@${id}> — +1 WL — ${chance}% chance`;
+  });
+
+  if (!partner) {
     for (const id of winners) {
       await Whitelist.findOneAndUpdate(
         { discordId: id },
@@ -117,28 +115,39 @@ export async function execute(interaction) {
         { upsert: true }
       );
     }
-    const lines = winners.map((id, i) => {
-      const chance = ((countMap[id] / totalTickets) * 100).toFixed(2);
-      return `**${i + 1}.** <@${id}> — +1 WL — ${chance}% chance`;
-    });
-    const embed = createEmbed({
-      title: `🎉 ${amount} whitelist${
-        amount > 1 ? 's' : ''
-      } distributed!`,
-      description:
-        `> \n` +
-        `Total Errand that verified their wallet: **${participantCount}**\n` +
-        `Total tickets after multiplier: **${totalTickets}**\n\n` +
-        lines.join('\n') +
-        `\n\n> Use \`/savewallet <address>\` to enter future raffles!`,
-      interaction,
-    });
-    await annCh.send({
-      content: `${ping} New whitelist giveaway! 🤘🔥`,
-      embeds: [embed],
-      allowed_mentions: { parse: ['roles'], users: winners }
-    });
   }
+
+  const embed = createEmbed({
+    title: partner
+      ? `🎁 Genesis & Level Giveaway: ${partner}`
+      : `🎉 ${amount} whitelist${amount > 1 ? 's' : ''} distributed!`,
+    description: [
+      `> Total participants: **${participantCount}**`,
+      `> Total tickets: **${totalTickets}**`,
+      '',
+      ...lines,
+      '',
+      partner
+        ? '> Each Genesis NFT = 100 tickets × role multiplier + 10 per level in the game `/profile`.'
+        : '> Each Genesis NFT = 100 tickets × role multiplier + 10 per level.\n> Use `/wallet` to enter future raffles.'
+    ].join('\n'),
+    interaction
+  });
+
+  await annCh.send({
+    content: `${ping} ${partner ? 'Partner giveaway!' : 'New whitelist giveaway!'}`,
+    embeds: [embed],
+    allowed_mentions: { parse: ['roles'], users: winners }
+  });
+
+  const winnerAddresses = winners
+    .map(id => walletMap.get(id))
+    .filter(Boolean)
+    .join('\n');
+
+  await logCh.send({
+    content: `📝 **Giveaway Winners Wallets**\n\`\`\`\n${winnerAddresses}\n\`\`\``
+  });
 
   await interaction.editReply(`✅ Giveaway complete: ${winners.length} winner(s).`);
 }
