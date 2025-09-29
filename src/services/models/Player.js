@@ -1,4 +1,4 @@
-// src/data/models/Player.js
+// src/services/models/Player.js
 import mongoose from 'mongoose';
 
 const playerSchema = new mongoose.Schema({
