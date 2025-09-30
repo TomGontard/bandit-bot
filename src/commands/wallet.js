@@ -26,10 +26,8 @@ export async function execute(interaction) {
 
   const guildMember = await interaction.guild.members.fetch(interaction.user.id);
 
-  // Always compare with lowercased address
   const wallet = (link.wallet || '').toLowerCase();
 
-  // On-chain counts
   let genesisCount = 0, banditCount = 0, utilityCount = 0;
   try {
     [genesisCount, banditCount, utilityCount] = await Promise.all([
@@ -39,7 +37,6 @@ export async function execute(interaction) {
     ]);
   } catch {}
 
-  // Sync Genesis role
   const hasGenesisRole = guildMember.roles.cache.has(process.env.ROLE_GENESIS_ID);
   if (genesisCount > 0 && !hasGenesisRole) {
     await guildMember.roles.add(process.env.ROLE_GENESIS_ID, 'Owns Genesis Pass');
@@ -47,24 +44,20 @@ export async function execute(interaction) {
     await guildMember.roles.remove(process.env.ROLE_GENESIS_ID, 'No Genesis Pass');
   }
 
-  // Level from Player
   const level = (await Player.findOne({ discordId: interaction.user.id }))?.level || 1;
 
-  // Tickets = ((nftCount * 100) + (level * 25)) * roleMult
   const roleMult = getRoleMultiplier(guildMember);
-  const nftCount = genesisCount; // ajoute banditCount si souhaité
+  const nftCount = genesisCount;
   const tickets  = computeTickets(nftCount, level, roleMult);
 
-  // FCFS/GTD WL flags (on-chain OR manual list) — always query with lowercased address
   const wlDoc = await WLAddress.findOne({ address: wallet }).lean().catch(() => null);
   const fcfsWL = (utilityCount > 0) || !!wlDoc?.fcfs;
   const gtdWL  = (genesisCount > 0 || banditCount > 0) || !!wlDoc?.gtd;
 
-  // Sync FCFS/GTD roles only for verified users
   const fcfsRoleId = process.env.ROLE_MAINNET_FCFS_WL_ID;
   const gtdRoleId  = process.env.ROLE_MAINNET_GTD_WL_ID;
 
-  if (link.verified && fcfsRoleId) {
+  if (fcfsRoleId) {
     const hasFcfsRole = guildMember.roles.cache.has(fcfsRoleId);
     if (fcfsWL && !hasFcfsRole) {
       await guildMember.roles.add(fcfsRoleId, 'FCFS WL eligible');
@@ -73,7 +66,7 @@ export async function execute(interaction) {
     }
   }
 
-  if (link.verified && gtdRoleId) {
+  if (gtdRoleId) {
     const hasGtdRole = guildMember.roles.cache.has(gtdRoleId);
     if (gtdWL && !hasGtdRole) {
       await guildMember.roles.add(gtdRoleId, 'GTD WL eligible');
@@ -84,7 +77,7 @@ export async function execute(interaction) {
 
   const { embed, buttons } = buildProfile({
     member: guildMember,
-    link: { ...link, wallet },   // conserve l’affichage mais normalisé pour cohérence
+    link: { ...link, wallet },
     verified: !!link.verified,
     genesisCount,
     banditHeld: banditCount,

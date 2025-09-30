@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 
 const WLAddressSchema = new mongoose.Schema(
   {
-    address: { type: String, required: true, unique: true }, // lowercase
+    address: { type: String, required: true, unique: true, lowercase: true, trim: true }, // lowercase
     fcfs: { type: Boolean, default: false },
     gtd: { type: Boolean, default: false },
     logs: [

@@ -5,6 +5,7 @@ import WLAddress from '../services/models/WLAddress.js';
 import UserLink from '../services/models/UserLink.js';
 import { getGenesisCount } from '../services/genesisService.js';
 import { getUtilityPassCount } from '../services/utilityService.js';
+import { getBanditCount } from '../services/banditService.js';
 import withTimeout from '../utils/withTimeout.js';
 import { getProvider } from '../utils/providerPool.js';
 
@@ -21,14 +22,12 @@ const ERC721_ABI = [
 ];
 const NEXT_ID_ABI = [
   'function nextTokenId() view returns (uint256)',
-  // variants frequently used
   'function _currentIndex() view returns (uint256)',
 ];
 
 const GENESIS_ADDR = (process.env.NFT_GENESIS_CONTRACT || '').toLowerCase();
 const UTILITY_ADDR = (process.env.NFT_UTILITY_PASS_CONTRACT || '').toLowerCase();
 
-// supply depuis l'env (facultatif)
 function envSupplyFor(addr) {
   const map = {
     [GENESIS_ADDR]: Number(process.env.NFT_GENESIS_SUPPLY || 0) || null,
@@ -40,7 +39,6 @@ function envSupplyFor(addr) {
 async function tryNextTokenId(addr) {
   try {
     const c = new Contract(addr, [...ERC721_ABI, ...NEXT_ID_ABI], getProvider(0));
-    // essaye plusieurs noms possibles
     if (typeof c.nextTokenId === 'function') {
       const v = await withTimeout(c.nextTokenId(), 3000);
       return typeof v === 'bigint' ? Number(v) : Number(v?.toString?.() ?? v);
@@ -66,7 +64,7 @@ async function detectStartIndex(addr, providerIdx = 0) {
   try {
     const c0 = new Contract(addr, ERC721_ABI, getProvider(providerIdx));
     await withTimeout(c0.ownerOf(0), 1500);
-    return 0; // 0-based enumerable
+    return 0; // 0-based
   } catch { return 1; } // 1-based
 }
 
@@ -89,7 +87,6 @@ async function enumerateOwnersRange(addr, startInclusive, endInclusive) {
   return holders;
 }
 
-// Comptage type “nextTokenId” (1-based, next unminted) → owners 1..nextId-1
 async function holdersByNextId(addr) {
   const nextId = await tryNextTokenId(addr);
   if (!nextId || nextId <= 1) return new Set();
@@ -97,7 +94,6 @@ async function holdersByNextId(addr) {
   return enumerateOwnersRange(addr, 1, minted);
 }
 
-// Comptage via totalSupply + détection 0-based/1-based
 async function holdersByTotalSupply(addr) {
   let supply = envSupplyFor(addr);
   if (!supply) supply = await tryTotalSupply(addr);
@@ -115,7 +111,6 @@ async function holdersGenesis(linkedWallets) {
   if (set.size === 0) set = await holdersByTotalSupply(GENESIS_ADDR);
   if (set.size > 0) return set;
 
-  // fallback: sondage des wallets liés
   const out = new Set();
   const BATCH = 60, TIMEOUT_MS = 4000;
   for (let i = 0; i < linkedWallets.length; i += BATCH) {
@@ -123,9 +118,7 @@ async function holdersGenesis(linkedWallets) {
     const res = await Promise.allSettled(
       slice.map(w => withTimeout(getGenesisCount(w), TIMEOUT_MS).catch(() => 0))
     );
-    res.forEach((r, k) => {
-      if (r.status === 'fulfilled' && Number(r.value) > 0) out.add(slice[k]);
-    });
+    res.forEach((r, k) => { if (r.status === 'fulfilled' && Number(r.value) > 0) out.add(slice[k]); });
   }
   return out;
 }
@@ -137,7 +130,6 @@ async function holdersUtility(linkedWallets) {
   if (set.size === 0) set = await holdersByTotalSupply(UTILITY_ADDR);
   if (set.size > 0) return set;
 
-  // fallback: sondage des wallets liés
   const out = new Set();
   const BATCH = 60, TIMEOUT_MS = 4000;
   for (let i = 0; i < linkedWallets.length; i += BATCH) {
@@ -145,9 +137,7 @@ async function holdersUtility(linkedWallets) {
     const res = await Promise.allSettled(
       slice.map(w => withTimeout(getUtilityPassCount(w), TIMEOUT_MS).catch(() => 0))
     );
-    res.forEach((r, k) => {
-      if (r.status === 'fulfilled' && Number(r.value) > 0) out.add(slice[k]);
-    });
+    res.forEach((r, k) => { if (r.status === 'fulfilled' && Number(r.value) > 0) out.add(slice[k]); });
   }
   return out;
 }
@@ -173,7 +163,7 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sc => sc
     .setName('total')
-    .setDescription('Show FCFS/GTD totals: per-source totals and present-on-server uniques')
+    .setDescription('Show totals and sync FCFS/GTD roles for members with a linked wallet')
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
@@ -191,7 +181,7 @@ export async function execute(interaction) {
       const set = kind === 'fcfs' ? { fcfs: true } : { gtd: true };
       await WLAddress.findOneAndUpdate(
         { address: a },
-        { $set: set, $push: { logs: { type: kind, staffId: interaction.user.id } } },
+        { $set: set, $setOnInsert: { address: a }, $push: { logs: { type: kind, staffId: interaction.user.id } } },
         { upsert: true }
       );
       ok++;
@@ -203,7 +193,6 @@ export async function execute(interaction) {
   if (sub === 'total') {
     const guild = interaction.guild;
 
-    // Listes manuelles
     const [manualFcfsDocs, manualGtdDocs] = await Promise.all([
       WLAddress.find({ fcfs: true }, 'address').lean(),
       WLAddress.find({ gtd: true }, 'address').lean(),
@@ -211,12 +200,12 @@ export async function execute(interaction) {
     const manualFcfs = new Set(manualFcfsDocs.map(d => (d.address || '').toLowerCase()));
     const manualGtd  = new Set(manualGtdDocs.map(d => (d.address || '').toLowerCase()));
 
-    // Wallets liés et présence serveur
     const links = await UserLink.find({}, 'wallet discordId').lean();
-    const walletToUser = new Map();
+    const walletToUser = new Map(); // wallet lc -> discordId
+    const userToWallet = new Map(); // discordId -> wallet lc
     for (const l of links) {
       const w = (l.wallet || '').toLowerCase();
-      if (isAddress(w)) walletToUser.set(w, l.discordId);
+      if (isAddress(w)) { walletToUser.set(w, l.discordId); userToWallet.set(l.discordId, w); }
     }
     const linkedWallets = [...walletToUser.keys()];
 
@@ -227,49 +216,103 @@ export async function execute(interaction) {
       return uid ? inGuildUsers.has(uid) : false;
     };
 
-    // Holders globaux (ou fallback liés)
     const [utilHoldersAll, genHoldersAll] = await Promise.all([
       holdersUtility(linkedWallets),
       holdersGenesis(linkedWallets),
     ]);
-    const banditHoldersAll = new Set(); // Bandit absent → 0
 
-    // FCFS
+    const banditHoldersAll = new Set();
+    const BATCH = 60, TIMEOUT_MS = 4000;
+    for (let i = 0; i < linkedWallets.length; i += BATCH) {
+      const slice = linkedWallets.slice(i, i + BATCH);
+      const res = await Promise.allSettled(
+        slice.map(w => withTimeout(getBanditCount(w), TIMEOUT_MS).catch(() => 0))
+      );
+      res.forEach((r, k) => { if (r.status === 'fulfilled' && Number(r.value) > 0) banditHoldersAll.add(slice[k]); });
+    }
+
     const fcfs_util_total = utilHoldersAll.size;
     let fcfs_util_on = 0; for (const w of utilHoldersAll) if (isInGuildWallet(w)) fcfs_util_on++;
     const fcfs_manual_total = manualFcfs.size;
     let fcfs_manual_on = 0; for (const w of manualFcfs) if (isInGuildWallet(w)) fcfs_manual_on++;
     const fcfs_dupe_total = fcfs_util_total + fcfs_manual_total;
-    const fcfs_unique_on = (() => {
-      const uni = new Set([...utilHoldersAll, ...manualFcfs]);
-      let on = 0; for (const w of uni) if (isInGuildWallet(w)) on++; return on;
-    })();
+    const fcfs_unique_wallets = new Set([...utilHoldersAll, ...manualFcfs]);
+    let fcfs_unique_on = 0; for (const w of fcfs_unique_wallets) if (isInGuildWallet(w)) fcfs_unique_on++;
 
-    // GTD
     const gtd_gen_total = genHoldersAll.size;
     let gtd_gen_on = 0; for (const w of genHoldersAll) if (isInGuildWallet(w)) gtd_gen_on++;
     const gtd_band_total = banditHoldersAll.size;
-    let gtd_band_on = 0;
+    let gtd_band_on = 0; for (const w of banditHoldersAll) if (isInGuildWallet(w)) gtd_band_on++;
     const gtd_manual_total = manualGtd.size;
     let gtd_manual_on = 0; for (const w of manualGtd) if (isInGuildWallet(w)) gtd_manual_on++;
     const gtd_dupe_total = gtd_gen_total + gtd_band_total + gtd_manual_total;
-    const gtd_unique_on = (() => {
-      const uni = new Set([...genHoldersAll, ...banditHoldersAll, ...manualGtd]);
-      let on = 0; for (const w of uni) if (isInGuildWallet(w)) on++; return on;
-    })();
+    const gtd_unique_wallets = new Set([...genHoldersAll, ...banditHoldersAll, ...manualGtd]);
+    let gtd_unique_on = 0; for (const w of gtd_unique_wallets) if (isInGuildWallet(w)) gtd_unique_on++;
 
-    // Output
+    const FCFS_ROLE_ID = process.env.ROLE_MAINNET_FCFS_WL_ID;
+    const GTD_ROLE_ID  = process.env.ROLE_MAINNET_GTD_WL_ID;
+
+    let fcfsAdded = 0, fcfsRemoved = 0, gtdAdded = 0, gtdRemoved = 0;
+
+    const toMember = async (wallet) => {
+      const uid = walletToUser.get(wallet);
+      if (!uid) return null;
+      try { return await guild.members.fetch(uid); } catch { return null; }
+    };
+
+    if (FCFS_ROLE_ID) {
+      const B = 25;
+      const wallets = [...fcfs_unique_wallets].filter(isInGuildWallet);
+      for (let i = 0; i < wallets.length; i += B) {
+        const slice = wallets.slice(i, i + B);
+        const members = await Promise.all(slice.map(toMember));
+        await Promise.allSettled(members.map(async (m) => {
+          if (!m) return;
+          const hasRole = m.roles.cache.has(FCFS_ROLE_ID);
+          if (!hasRole) { await m.roles.add(FCFS_ROLE_ID, 'FCFS WL (utility/manual)'); fcfsAdded++; }
+        }));
+      }
+
+      const holdersSet = new Set(wallets);
+      const toRemove = allMembers
+        .filter(m => m.roles.cache.has(FCFS_ROLE_ID))
+        .filter(m => !holdersSet.has((userToWallet.get(m.id) || '').toLowerCase()));
+      await Promise.allSettled(toRemove.map(async m => { await m.roles.remove(FCFS_ROLE_ID, 'No longer FCFS WL'); fcfsRemoved++; }));
+    }
+
+    if (GTD_ROLE_ID) {
+      const B = 25;
+      const wallets = [...gtd_unique_wallets].filter(isInGuildWallet);
+      for (let i = 0; i < wallets.length; i += B) {
+        const slice = wallets.slice(i, i + B);
+        const members = await Promise.all(slice.map(toMember));
+        await Promise.allSettled(members.map(async (m) => {
+          if (!m) return;
+          const hasRole = m.roles.cache.has(GTD_ROLE_ID);
+          if (!hasRole) { await m.roles.add(GTD_ROLE_ID, 'GTD WL (genesis/bandit/manual)'); gtdAdded++; }
+        }));
+      }
+
+      const holdersSet = new Set(wallets);
+      const toRemove = allMembers
+        .filter(m => m.roles.cache.has(GTD_ROLE_ID))
+        .filter(m => !holdersSet.has((userToWallet.get(m.id) || '').toLowerCase()));
+      await Promise.allSettled(toRemove.map(async m => { await m.roles.remove(GTD_ROLE_ID, 'No longer GTD WL'); gtdRemoved++; }));
+    }
+
     const lines = [
       '**FCFS**',
       `• Hold Utility Pass : ${fcfs_util_total} | ${fcfs_util_on}`,
       `• Dans liste FCFS   : ${fcfs_manual_total} | ${fcfs_manual_on}`,
       `• Total             : ${fcfs_dupe_total} | ${fcfs_unique_on}`,
+      `• Rôles ↗/↘         : +${fcfsAdded} / -${fcfsRemoved}`,
       '',
       '**GTD**',
       `• Hold Genesis      : ${gtd_gen_total} | ${gtd_gen_on}`,
       `• Hold Bandit       : ${gtd_band_total} | ${gtd_band_on}`,
       `• Dans liste GTD    : ${gtd_manual_total} | ${gtd_manual_on}`,
       `• Total             : ${gtd_dupe_total} | ${gtd_unique_on}`,
+      `• Rôles ↗/↘         : +${gtdAdded} / -${gtdRemoved}`,
     ];
 
     return interaction.editReply(lines.join('\n'));

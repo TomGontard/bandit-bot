@@ -2,8 +2,8 @@
 // ------------------------------------------------------------
 // ➜ Cron hourly: sync Genesis role + Mainnet FCFS/GTD WL roles
 //    - Genesis: on-chain balance > 0
-//    - FCFS WL: link.verified && (UtilityPass holder OR WLAddress.fcfs)
-//    - GTD  WL: link.verified && (Genesis holder OR Bandit holder OR WLAddress.gtd)
+//    - FCFS WL: (UtilityPass holder OR WLAddress.fcfs)
+//    - GTD  WL: (Genesis holder OR Bandit holder OR WLAddress.gtd)
 // ------------------------------------------------------------
 
 import 'dotenv/config';
@@ -43,7 +43,6 @@ const utilityContract = ethers.isAddress(UTILITY_CONTRACT)
   : null;
 const banditContracts = BANDIT_CONTRACTS.map(addr => new ethers.Contract(addr, erc721Abi, provider));
 
-// Discord client
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 
 const CONCURRENCY = 10;
@@ -55,7 +54,7 @@ async function syncGenesisRoles() {
   await client.login(process.env.DISCORD_TOKEN);
   const guild = await client.guilds.fetch(GUILD_ID);
 
-  const links = await UserLink.find({}, 'discordId wallet verified').lean();
+  const links = await UserLink.find({}, 'discordId wallet').lean();
 
   for (let i = 0; i < links.length; i += CONCURRENCY) {
     const slice = links.slice(i, i + CONCURRENCY);
@@ -65,7 +64,6 @@ async function syncGenesisRoles() {
         const wallet = (link.wallet || '').toLowerCase();
         if (!ethers.isAddress(wallet)) return;
 
-        // Parallel fetch: member, WL doc, balances
         const [member, wlDoc, genesisBal] = await Promise.all([
           guild.members.fetch(link.discordId).catch(() => null),
           WLAddress.findOne({ address: wallet }).lean().catch(() => null),
@@ -73,7 +71,6 @@ async function syncGenesisRoles() {
         ]);
         if (!member) return;
 
-        // ---- Genesis role sync
         const hasGenesis = genesisBal > 0n;
         const hasGenesisRole = member.roles.cache.has(GENESIS_ROLE_ID);
         if (hasGenesis && !hasGenesisRole) {
@@ -84,47 +81,40 @@ async function syncGenesisRoles() {
           logger.info(`- Genesis role removed from ${member.user.tag}`);
         }
 
-        // ---- FCFS / GTD WL roles (require verified link)
-        const isVerified = !!link.verified;
-
-        // Utility holder?
         let hasUtility = false;
-        if (isVerified && utilityContract) {
+        if (utilityContract) {
           const ub = await utilityContract.balanceOf(wallet).catch(() => 0n);
           hasUtility = ub > 0n;
         }
 
-        // Bandit holder?
         let hasBandit = false;
-        if (isVerified && banditContracts.length) {
+        if (banditContracts.length) {
           const res = await Promise.allSettled(banditContracts.map(c => c.balanceOf(wallet)));
           const sum = res.reduce((acc, r) => acc + (r.status === 'fulfilled' ? r.value : 0n), 0n);
           hasBandit = sum > 0n;
         }
 
-        const fcfsEligible = isVerified && (hasUtility || !!wlDoc?.fcfs);
-        const gtdEligible  = isVerified && ((hasGenesis || hasBandit) || !!wlDoc?.gtd);
+        const fcfsEligible = (hasUtility || !!wlDoc?.fcfs);
+        const gtdEligible  = ((hasGenesis || hasBandit) || !!wlDoc?.gtd);
 
-        // FCFS role
         if (FCFS_ROLE_ID) {
           const hasFcfsRole = member.roles.cache.has(FCFS_ROLE_ID);
           if (fcfsEligible && !hasFcfsRole) {
             await member.roles.add(FCFS_ROLE_ID, 'Mainnet FCFS WL');
             logger.info(`+ FCFS WL role added to ${member.user.tag}`);
           } else if (!fcfsEligible && hasFcfsRole) {
-            await member.roles.remove(FCFS_ROLE_ID, 'No longer FCFS eligible or not verified');
+            await member.roles.remove(FCFS_ROLE_ID, 'No longer FCFS eligible');
             logger.info(`- FCFS WL role removed from ${member.user.tag}`);
           }
         }
 
-        // GTD role
         if (GTD_ROLE_ID) {
           const hasGtdRole = member.roles.cache.has(GTD_ROLE_ID);
           if (gtdEligible && !hasGtdRole) {
             await member.roles.add(GTD_ROLE_ID, 'Mainnet GTD WL');
             logger.info(`+ GTD WL role added to ${member.user.tag}`);
           } else if (!gtdEligible && hasGtdRole) {
-            await member.roles.remove(GTD_ROLE_ID, 'No longer GTD eligible or not verified');
+            await member.roles.remove(GTD_ROLE_ID, 'No longer GTD eligible');
             logger.info(`- GTD WL role removed from ${member.user.tag}`);
           }
         }
@@ -138,7 +128,6 @@ async function syncGenesisRoles() {
   logger.info('GenesisRoleSync: completed');
 }
 
-// Hourly
 cron.schedule('0 * * * *', () => {
   syncGenesisRoles().catch(err => logger.error('GenesisRoleSync fatal', err));
 });
